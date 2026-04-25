@@ -37,11 +37,13 @@ const SSSeed = {
     mental:     { value: 54 }
   },
   quests: [
-    { id: "q1", title: "Силовая: ноги + ягодицы",    stat: "strength",   difficulty: "medium", xp: 100, due: seedDate("today"), daily: true,  done: false, streak: 12 },
+    { id: "q1", title: "Силовая: ноги + ягодицы",    stat: "strength",   difficulty: "medium", xp: 100, due: seedDate("today"), daily: false, done: false, streak: 12 },
     { id: "q2", title: "Написать пост в Telegram",    stat: "mental",     difficulty: "small",  xp: 50,  due: seedDate("today"), daily: true,  done: true,  streak: 17 },
-    { id: "q3", title: "10 000 шагов",                stat: "energy",     difficulty: "small",  xp: 50,  due: seedDate("today"), daily: true,  done: false, streak: 5  },
+    { id: "q3", title: "Режим питания",               stat: "energy",     difficulty: "small",  xp: 50,  due: seedDate("today"), daily: true,  done: false, streak: 5  },
     { id: "q4", title: "Снять 3 Reels на неделю",     stat: "mental",     difficulty: "large",  xp: 200, due: seedDate("+3"),    daily: false, done: false },
-    { id: "q5", title: "Закрыть 5 новых клиентов",    stat: "discipline", difficulty: "epic",   xp: 500, due: seedDate("+6"),    daily: false, done: false, boss: true }
+    { id: "q5", title: "Закрыть 5 новых клиентов",    stat: "discipline", difficulty: "epic",   xp: 500, due: seedDate("+6"),    daily: false, done: false, boss: true },
+    { id: "q6", title: "Сторис / прямой эфир",        stat: "mental",     difficulty: "small",  xp: 50,  due: seedDate("today"), daily: true,  done: false, streak: 0  },
+    { id: "q7", title: "Разбор нового клиента",       stat: "discipline", difficulty: "small",  xp: 50,  due: seedDate("today"), daily: true,  done: false, streak: 0  }
   ],
   leads: [
     { id: "l1", name: "Анна К.",  phone: "+7 999 123-45-67", stage: "paid", amount: 25000, next: seedDate("+14"), note: "Тариф «Трансформация», 3 мес." },

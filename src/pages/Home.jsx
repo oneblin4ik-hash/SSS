@@ -1,7 +1,7 @@
 const STAT_META = {
   strength:   { label: "Сила",        color: "var(--stat-strength)" },
   discipline: { label: "Дисциплина",  color: "var(--stat-discipline)" },
-  energy:     { label: "Энергия",     color: "var(--stat-energy)" },
+  energy:     { label: "Здоровье",    color: "var(--stat-energy)" },
   mental:     { label: "Интеллект",   color: "var(--stat-mental)" }
 };
 

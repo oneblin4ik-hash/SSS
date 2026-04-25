@@ -84,7 +84,7 @@ const NAV = [
   { id: "quests",       label: "Квесты",       icon: "⚔" },
   { id: "workouts",     label: "Тренировки",   icon: "△" },
   { id: "content",      label: "Контент-план", icon: "✎" },
-  { id: "crm",          label: "CRM / Лиды",   icon: "◐" },
+  { id: "crm",          label: "Личная база",  icon: "◐" },
   { id: "wallet",       label: "Кошелёк",      icon: "◈" },
   { id: "achievements", label: "Достижения",   icon: "✦" }
 ];

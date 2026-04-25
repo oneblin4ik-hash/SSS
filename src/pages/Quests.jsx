@@ -13,7 +13,7 @@ const STAT_COLORS_Q = {
 };
 
 const STAT_LABELS_Q = {
-  strength: "Сила", discipline: "Дисциплина", energy: "Энергия", mental: "Интеллект"
+  strength: "Сила", discipline: "Дисциплина", energy: "Здоровье", mental: "Интеллект"
 };
 
 const FILTERS = [
@@ -68,7 +68,7 @@ const QuestModal = ({ quest, onSave, onDelete, onClose }) => {
               <select className="ss-select" value={form.stat || "strength"} onChange={e => set("stat", e.target.value)}>
                 <option value="strength">Сила</option>
                 <option value="discipline">Дисциплина</option>
-                <option value="energy">Энергия</option>
+                <option value="energy">Здоровье</option>
                 <option value="mental">Интеллект</option>
               </select>
             </div>
@@ -125,7 +125,7 @@ const QuestModal = ({ quest, onSave, onDelete, onClose }) => {
   );
 };
 
-const QuestItem = ({ quest, onToggle, onEdit }) => {
+const QuestItem = ({ quest, onToggle, onEdit, onDelete }) => {
   const diff = DIFF_META[quest.difficulty] || DIFF_META.medium;
   const xp = SSEngine.xpFor(quest, quest.streak || 0);
   const statColor = STAT_COLORS_Q[quest.stat] || "var(--text-3)";
@@ -139,7 +139,7 @@ const QuestItem = ({ quest, onToggle, onEdit }) => {
       >
         {quest.done && "✓"}
       </div>
-      <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => onEdit(quest)}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: 13,
           color: quest.done ? "var(--text-3)" : "var(--text-1)",
@@ -159,7 +159,17 @@ const QuestItem = ({ quest, onToggle, onEdit }) => {
           {quest.due && <span style={{ fontSize: 10, color: "var(--text-3)" }}>→ {fmtDate(quest.due)}</span>}
         </div>
       </div>
-      <span className="num" style={{ fontSize: 12, color: "var(--accent)", flexShrink: 0 }}>+{xp}</span>
+      <span className="num" style={{ fontSize: 12, color: "var(--accent)", flexShrink: 0, marginRight: 4 }}>+{xp}</span>
+      <button
+        onClick={() => onEdit(quest)}
+        style={{ background:"none", border:"none", cursor:"pointer", color:"var(--text-4)", fontSize:14, padding:"0 3px", lineHeight:1 }}
+        title="Редактировать"
+      >✎</button>
+      <button
+        onClick={() => { if (confirm(`Удалить квест «${quest.title}»?`)) onDelete(quest.id); }}
+        style={{ background:"none", border:"none", cursor:"pointer", color:"var(--text-4)", fontSize:14, padding:"0 3px", lineHeight:1 }}
+        title="Удалить"
+      >✕</button>
     </div>
   );
 };
@@ -247,6 +257,7 @@ const QuestsPage = ({ quests, completeQuest, undoQuest, addQuest, updateQuest, d
             quest={q}
             onToggle={handleToggle}
             onEdit={q => setEditQuest(q)}
+            onDelete={handleDelete}
           />
         ))}
       </div>

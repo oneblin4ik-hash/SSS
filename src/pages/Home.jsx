@@ -2,7 +2,7 @@ const STAT_META = {
   strength:   { label: "Сила",        color: "var(--stat-strength)" },
   discipline: { label: "Дисциплина",  color: "var(--stat-discipline)" },
   energy:     { label: "Энергия",     color: "var(--stat-energy)" },
-  mental:     { label: "Ментал",      color: "var(--stat-mental)" }
+  mental:     { label: "Интеллект",   color: "var(--stat-mental)" }
 };
 
 const QUOTES = [

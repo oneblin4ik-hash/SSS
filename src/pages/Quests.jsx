@@ -13,7 +13,7 @@ const STAT_COLORS_Q = {
 };
 
 const STAT_LABELS_Q = {
-  strength: "Сила", discipline: "Дисциплина", energy: "Энергия", mental: "Ментал"
+  strength: "Сила", discipline: "Дисциплина", energy: "Энергия", mental: "Интеллект"
 };
 
 const FILTERS = [
@@ -69,7 +69,7 @@ const QuestModal = ({ quest, onSave, onDelete, onClose }) => {
                 <option value="strength">Сила</option>
                 <option value="discipline">Дисциплина</option>
                 <option value="energy">Энергия</option>
-                <option value="mental">Ментал</option>
+                <option value="mental">Интеллект</option>
               </select>
             </div>
             <div>

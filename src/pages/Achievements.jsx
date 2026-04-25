@@ -4,13 +4,12 @@ const TIER_META = {
   gold:   { label: "Золото", color: "oklch(0.78 0.15 75)" }
 };
 
-const PATHS = ["Все", "Сила", "Дисциплина", "Контент", "Бизнес", "Ментал", "Скрытые"];
+const PATHS = ["Все", "Сила", "Дисциплина", "Контент", "Бизнес", "Интеллект", "Тело", "Скрытые"];
 
-const AchievementCard = ({ ach, onToggle }) => {
+const AchievementCard = ({ ach }) => {
   const tier = TIER_META[ach.tier] || TIER_META.bronze;
   return (
     <div
-      onClick={() => onToggle(ach.id)}
       style={{
         background: ach.done
           ? `linear-gradient(180deg, color-mix(in oklab, ${tier.color} 12%, var(--bg-2)), var(--bg-1))`
@@ -73,30 +72,15 @@ const AchievementCard = ({ ach, onToggle }) => {
   );
 };
 
-const AchievementsPage = ({ achievements, setAchievements, setProfile, logEvent }) => {
+const AchievementsPage = ({ achievements }) => {
   const { useState } = React;
   const [pathFilter, setPathFilter] = useState("Все");
-  const [popup, setPopup] = useState(null);
 
   const filtered = pathFilter === "Все"
     ? achievements
     : achievements.filter(a => a.path === pathFilter);
 
   const doneCount = achievements.filter(a => a.done).length;
-
-  const toggleAch = (id) => {
-    const ach = achievements.find(a => a.id === id);
-    if (!ach) return;
-    const wasDone = ach.done;
-    setAchievements(prev => prev.map(a => a.id === id ? { ...a, done: !a.done } : a));
-    if (!wasDone) {
-      // Unlock: +150 XP
-      setProfile(p => SSEngine.addXp(p, 150));
-      logEvent(`✦ Ачивка: «${ach.title}»`, "+150");
-      setPopup(ach);
-      setTimeout(() => setPopup(null), 3000);
-    }
-  };
 
   return (
     <div>
@@ -133,22 +117,13 @@ const AchievementsPage = ({ achievements, setAchievements, setProfile, logEvent 
       {/* Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 14 }}>
         {filtered.map(ach => (
-          <AchievementCard key={ach.id} ach={ach} onToggle={toggleAch} />
+          <AchievementCard key={ach.id} ach={ach} />
         ))}
       </div>
 
-      {/* Achievement popup */}
-      {popup && (
-        <div className="achievement-popup">
-          <div style={{ fontSize: 28 }}>✦</div>
-          <div>
-            <div style={{ fontSize: 10, color: "var(--text-3)", fontFamily: "var(--font-mono)", marginBottom: 4 }}>
-              ДОСТИЖЕНИЕ РАЗБЛОКИРОВАНО
-            </div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--accent)" }}>{popup.title}</div>
-            <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 3 }}>{popup.desc}</div>
-          </div>
-          <div className="num" style={{ color: "var(--accent)", fontSize: 13, marginLeft: "auto" }}>+150 XP</div>
+      {doneCount === 0 && pathFilter !== "Все" && (
+        <div style={{ textAlign:"center", color:"var(--text-3)", fontSize:13, marginTop:24 }}>
+          Нет открытых достижений в этой категории
         </div>
       )}
     </div>

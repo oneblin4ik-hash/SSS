@@ -109,14 +109,21 @@ const SSSeed = {
     { id:"a20", title:"Маленькая империя",                desc:"10 активных клиентов",                          path:"Бизнес",     tier:"gold",   done:false },
     { id:"a21", title:"Закрыла, довела, отпустила",       desc:"5 клиентов в «Завершено»",                      path:"Бизнес",     tier:"silver", done:false },
     { id:"a22", title:"Баланс героя",                     desc:"Достигнуть цели месяца",                        path:"Бизнес",     tier:"gold",   done:false },
-    { id:"a23", title:"Не отвалилась после «не хочу»",   desc:"Завершить день, когда хотела бросить",          path:"Ментал",     tier:"silver", done:true  },
-    { id:"a24", title:"Тишина внутри",                    desc:"7 дней подряд без пропуска",                    path:"Ментал",     tier:"silver", done:false },
-    { id:"a25", title:"Видимая я",                        desc:"Достичь «Мастер» в характеристике",            path:"Ментал",     tier:"gold",   done:false },
+    { id:"a23", title:"Не отвалилась после «не хочу»",   desc:"Завершить день, когда хотела бросить",          path:"Интеллект",     tier:"silver", done:true  },
+    { id:"a24", title:"Тишина внутри",                    desc:"7 дней подряд без пропуска",                    path:"Интеллект",     tier:"silver", done:false },
+    { id:"a25", title:"Видимая я",                        desc:"Достичь «Мастер» в характеристике",            path:"Интеллект",     tier:"gold",   done:false },
     { id:"a26", title:"Тысячница",                        desc:"1000 XP за один день",                          path:"Скрытые",    tier:"gold",   done:false },
     { id:"a27", title:"Ночной дозор",                     desc:"Закрыть квест после полуночи",                  path:"Скрытые",    tier:"bronze", done:false },
     { id:"a28", title:"Архитектор",                       desc:"Создать 20 квестов",                            path:"Скрытые",    tier:"silver", done:false },
     { id:"a29", title:"Суперсистема",                     desc:"Открыть все 8 вкладок за один день",            path:"Скрытые",    tier:"gold",   done:true  },
-    { id:"a30", title:"Перевалила за половину",           desc:"Открыть 15 ачивок",                             path:"Скрытые",    tier:"silver", done:false }
+    { id:"a30", title:"Перевалила за половину",           desc:"Открыть 15 ачивок",                             path:"Скрытые",    tier:"silver", done:false },
+
+    // Тело (масса)
+    { id:"a31", title:"Железный торс",     desc:"Грудь достигла цели — 98 см",    path:"Тело", tier:"gold",   done:false },
+    { id:"a32", title:"Руки-канаты",       desc:"Бицепс достиг цели — 36 см",     path:"Тело", tier:"silver", done:false },
+    { id:"a33", title:"Ноги-столбы",       desc:"Бедро достигло цели — 60 см",    path:"Тело", tier:"silver", done:false },
+    { id:"a34", title:"Первый сантиметр",  desc:"+1 см в любой зоне за замер",    path:"Тело", tier:"bronze", done:false },
+    { id:"a35", title:"Масса принята",     desc:"Все замеры (кроме талии) на цели", path:"Тело", tier:"gold", done:false }
   ],
   eventLog: []
 };

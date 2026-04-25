@@ -13,7 +13,7 @@ function getFirstDayOfMonth(year, month) {
   return d === 0 ? 6 : d - 1; // Mon=0
 }
 
-const WorkoutsPage = ({ workouts, setWorkouts, logEvent }) => {
+const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
   const { useState } = React;
   const today = new Date();
   const [editMeasurements, setEditMeasurements] = useState(false);
@@ -40,10 +40,31 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent }) => {
     logEvent(`Тренировка: ${entry.type}`, `+${entry.xp}`);
   };
 
+  // XP multiplier per cm gained per zone (waist excluded)
+  const XP_PER_CM = { chest: 15, hips: 10, biceps: 25, thigh: 10 };
+
   const saveMeasurements = () => {
+    const old = workouts.measurements.current;
     const parsed = {};
     Object.keys(measForm).forEach(k => { parsed[k] = parseFloat(measForm[k]) || 0; });
+
+    let totalXp = 0;
+    const gains = [];
+    Object.keys(XP_PER_CM).forEach(k => {
+      const delta = (parsed[k] || 0) - (old[k] || 0);
+      if (delta > 0) {
+        const xp = Math.round(delta * XP_PER_CM[k]);
+        totalXp += xp;
+        gains.push(`+${delta.toFixed(1)} см ${MEASUREMENT_LABELS[k]}`);
+      }
+    });
+
     setWorkouts(w => ({ ...w, measurements: { ...w.measurements, current: parsed } }));
+
+    if (totalXp > 0 && setProfile) {
+      setProfile(p => SSEngine.addXp(p, totalXp));
+      logEvent(`Замеры: ${gains.join(", ")}`, `+${totalXp}`);
+    }
     setEditMeasurements(false);
   };
 
@@ -155,25 +176,41 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent }) => {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14 }}>
           {Object.keys(MEASUREMENT_LABELS).map(key => {
+            const isWaist = key === "waist";
             const cur = workouts.measurements.current[key] || 0;
             const tgt = workouts.measurements.target[key] || 0;
             const diff = (cur - tgt).toFixed(1);
-            const diffPos = parseFloat(diff) > 0;
-            const pct = tgt > 0 ? Math.min(100, Math.round((Math.min(cur, tgt) / Math.max(cur, tgt)) * 100)) : 50;
+            // For mass-gain zones: cur>=tgt is good (green). For waist: neutral.
+            const diffNum = parseFloat(diff);
+            let diffColor = "var(--text-4)";
+            if (!isWaist) {
+              diffColor = diffNum >= 0 ? "var(--leaf)" : "var(--crimson)";
+            }
+            // Progress bar: for mass zones, how close cur is to tgt (cur/tgt %)
+            const pct = isWaist ? 50
+              : tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 50;
             return (
               <div key={key} style={{ textAlign: "center" }}>
-                <div className="eyebrow" style={{ marginBottom: 8 }}>{MEASUREMENT_LABELS[key]}</div>
+                <div className="eyebrow" style={{ marginBottom: 8 }}>
+                  {MEASUREMENT_LABELS[key]}
+                  {isWaist && <span style={{ marginLeft: 4, opacity: 0.4, fontSize: 9 }}>—</span>}
+                </div>
                 {editMeasurements
                   ? <input className="ss-input" type="number" step="0.1"
                       value={measForm[key] || ""} onChange={e => setMeasForm(f => ({ ...f, [key]: e.target.value }))}
                       style={{ textAlign: "center", marginBottom: 8 }} />
                   : <div style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--text-1)", marginBottom: 4 }}>{cur}</div>
                 }
-                <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 6 }}>→ {tgt} см</div>
-                <div style={{ fontSize: 10, color: diffPos ? "var(--crimson)" : "var(--leaf)", marginBottom: 8 }}>
-                  {diffPos ? "+" : ""}{diff}
-                </div>
-                <XPBar pct={pct} compact />
+                {isWaist
+                  ? <div style={{ fontSize: 10, color: "var(--text-4)", marginBottom: 14 }}>нейтрально</div>
+                  : <>
+                    <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 6 }}>цель: {tgt} см</div>
+                    <div style={{ fontSize: 10, color: diffColor, marginBottom: 8 }}>
+                      {diffNum >= 0 ? "+" : ""}{diff} от цели
+                    </div>
+                    <XPBar pct={pct} compact />
+                  </>
+                }
               </div>
             );
           })}

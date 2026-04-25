@@ -9,7 +9,7 @@ const STAT_LABELS = {
   strength:   { label: "Сила",       color: "var(--stat-strength)" },
   discipline: { label: "Дисциплина", color: "var(--stat-discipline)" },
   energy:     { label: "Энергия",    color: "var(--stat-energy)" },
-  mental:     { label: "Ментал",     color: "var(--stat-mental)" }
+  mental:     { label: "Интеллект",  color: "var(--stat-mental)" }
 };
 
 const STAGE_LEVELS = [0, 5, 10, 15, 20, 25];
@@ -56,20 +56,18 @@ const CharacterPage = ({ profile, stats, achievements }) => {
             <div className="rune-divider" style={{ marginTop: 0 }}>эволюция аватара</div>
             <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
               {STAGE_LEVELS.map((lvl, i) => {
-                const isActive = Math.floor(profile.level / 5) >= i;
+                const isActive  = Math.floor(profile.level / 5) >= i;
                 const isCurrent = Math.floor(profile.level / 5) === i;
                 return (
                   <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                     <div style={{
-                      width: 40, height: 40, borderRadius: "50%", overflow: "hidden",
+                      width: 48, height: 48, borderRadius: "50%", overflow: "hidden",
                       border: isCurrent ? "2px solid var(--accent)" : "2px solid var(--line-2)",
-                      opacity: isActive ? 1 : 0.3,
-                      background: "radial-gradient(circle at 30% 30%, #f4c87a 0%, #c88a2a 70%, #6b4a18 100%)",
-                      display: "grid", placeItems: "center",
-                      boxShadow: isCurrent ? "0 0 12px var(--amber-glow)" : "none",
+                      opacity: isActive ? 1 : 0.28,
+                      boxShadow: isCurrent ? "0 0 14px var(--amber-glow)" : "none",
                       transition: "all 0.2s"
                     }}>
-                      <span style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "rgba(0,0,0,0.5)" }}>S</span>
+                      <WarriorPortrait stage={i} />
                     </div>
                     <span className="num" style={{ fontSize: 9, color: isCurrent ? "var(--accent)" : "var(--text-4)" }}>Lv {lvl}</span>
                   </div>

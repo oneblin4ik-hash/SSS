@@ -43,5 +43,13 @@ const SSEngine = (() => {
     return p;
   }
 
-  return { DIFFICULTY_XP, xpFor, xpToNextLevel, tierFor, avatarStageFor, addXp };
+  function subtractXp(profile, amount) {
+    return {
+      ...profile,
+      xp:      Math.max(0, (profile.xp      || 0) - amount),
+      totalXp: Math.max(0, (profile.totalXp || 0) - amount)
+    };
+  }
+
+  return { DIFFICULTY_XP, xpFor, xpToNextLevel, tierFor, avatarStageFor, addXp, subtractXp };
 })();

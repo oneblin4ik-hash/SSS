@@ -46,6 +46,113 @@ const ContentCard = ({ item, onStatusChange }) => {
   );
 };
 
+/* ── Content mini-calendar ────────────────────────────────────── */
+const ContentCalendar = ({ content }) => {
+  const { useState } = React;
+  const now   = new Date();
+  const [viewMonth, setViewMonth] = useState(now.getMonth());
+  const [viewYear,  setViewYear]  = useState(now.getFullYear());
+
+  const MONTH_NAMES = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+  const DAY_NAMES   = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+
+  const daysInMonth  = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDayRaw  = new Date(viewYear, viewMonth, 1).getDay();
+  const firstDay     = firstDayRaw === 0 ? 6 : firstDayRaw - 1;
+  const todayStr     = now.toISOString().split("T")[0];
+
+  // Build date → content items map
+  const byDate = {};
+  content.forEach(c => {
+    if (!byDate[c.date]) byDate[c.date] = [];
+    byDate[c.date].push(c);
+  });
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const STATUS_DOTS = {
+    idea:      "var(--text-3)",
+    draft:     "var(--teal)",
+    ready:     "var(--accent)",
+    published: "var(--leaf)"
+  };
+
+  return (
+    <div className="ss-card" style={{ padding:20 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+        <button className="ss-ghost-btn" style={{ padding:"3px 10px" }} onClick={prevMonth}>‹</button>
+        <div className="eyebrow">{MONTH_NAMES[viewMonth]} {viewYear}</div>
+        <button className="ss-ghost-btn" style={{ padding:"3px 10px" }} onClick={nextMonth}>›</button>
+      </div>
+
+      {/* Day headers */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:3, marginBottom:6 }}>
+        {DAY_NAMES.map(d => (
+          <div key={d} style={{ textAlign:"center", fontSize:9, color:"var(--text-4)", fontFamily:"var(--font-mono)" }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Day cells */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:3 }}>
+        {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const dateStr = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+          const items   = byDate[dateStr] || [];
+          const isToday = dateStr === todayStr;
+          return (
+            <div key={day} style={{
+              minHeight:40, borderRadius:6, padding:"3px 4px",
+              background: items.length > 0
+                ? "color-mix(in oklab, var(--accent) 12%, transparent)"
+                : "transparent",
+              border: isToday ? "1px solid var(--accent)" : "1px solid transparent",
+              transition:"background 0.15s"
+            }}>
+              <div style={{ textAlign:"center", fontSize:10, fontFamily:"var(--font-mono)",
+                color: isToday ? "var(--accent)" : items.length ? "var(--text-2)" : "var(--text-4)",
+                marginBottom:2 }}>
+                {day}
+              </div>
+              {items.slice(0,3).map((c, ci) => (
+                <div key={ci} style={{
+                  fontSize:8, padding:"1px 3px", borderRadius:3, marginBottom:1,
+                  background:`color-mix(in oklab, ${STATUS_DOTS[c.status]||"var(--text-3)"} 15%, transparent)`,
+                  color: STATUS_DOTS[c.status] || "var(--text-3)",
+                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+                  fontFamily:"var(--font-mono)"
+                }}>
+                  {c.type === "tg" ? "TG" : "RL"} {c.title.slice(0,12)}
+                </div>
+              ))}
+              {items.length > 3 && (
+                <div style={{ fontSize:8, color:"var(--text-4)", textAlign:"center" }}>+{items.length-3}</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div style={{ display:"flex", gap:12, marginTop:12, flexWrap:"wrap" }}>
+        {CONTENT_STATUSES.map(s => (
+          <span key={s.id} style={{ fontSize:10, color:s.color, display:"flex", alignItems:"center", gap:4 }}>
+            <span style={{ width:8, height:8, borderRadius:"50%", background:s.color, display:"inline-block" }}/>
+            {s.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const ContentPage = ({ content, setContent, logEvent }) => {
   const { useState } = React;
   const [format, setFormat] = useState("tg");
@@ -193,6 +300,11 @@ const ContentPage = ({ content, setContent, logEvent }) => {
             <div style={{ fontSize: 11, color: "var(--text-3)" }}>единиц контента</div>
           </div>
         </div>
+      </div>
+
+      {/* Mini-calendar */}
+      <div style={{ marginBottom: 14 }}>
+        <ContentCalendar content={content} />
       </div>
 
       {/* Kanban */}

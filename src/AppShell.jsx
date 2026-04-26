@@ -183,7 +183,16 @@ function useAppState() {
     });
   }, [logEvent]);
 
-  const undoQuest   = useCallback((qid) => setQuests(qs => qs.map(x => x.id === qid ? { ...x, done: false } : x)), []);
+  const undoQuest = useCallback((qid) => {
+    setQuests(qs => {
+      const q = qs.find(x => x.id === qid);
+      if (!q || !q.done) return qs;
+      const xp = SSEngine.xpFor(q, q.streak || 0);
+      setProfile(p => SSEngine.subtractXp(p, xp));
+      logEvent(`«${q.title}» — отменено`, `-${xp}`);
+      return qs.map(x => x.id === qid ? { ...x, done: false, completedAt: undefined } : x);
+    });
+  }, [logEvent]);
   const addQuest    = useCallback((q) => {
     const nq = { id: "q" + Date.now(), done: false, streak: 0, ...q };
     setQuests(qs => [nq, ...qs]);

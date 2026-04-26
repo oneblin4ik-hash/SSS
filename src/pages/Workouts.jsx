@@ -7,13 +7,12 @@ const MEASUREMENT_LABELS = {
 function getDaysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate();
 }
-
 function getFirstDayOfMonth(year, month) {
   let d = new Date(year, month, 1).getDay();
   return d === 0 ? 6 : d - 1;
 }
 
-/* ── Workout edit/add modal ───────────────────────────────────── */
+/* ── Workout edit modal ───────────────────────────────────────── */
 const WorkoutModal = ({ workout, onSave, onDelete, onClose }) => {
   const { useState } = React;
   const isNew = !workout || workout.mode === "new";
@@ -33,7 +32,6 @@ const WorkoutModal = ({ workout, onSave, onDelete, onClose }) => {
           </h2>
           <button className="ss-ghost-btn" onClick={onClose} style={{ padding:"4px 8px" }}>✕</button>
         </div>
-
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
             <div>
@@ -43,7 +41,7 @@ const WorkoutModal = ({ workout, onSave, onDelete, onClose }) => {
               </select>
             </div>
             <div>
-              <div className="eyebrow" style={{ marginBottom:6 }}>XP</div>
+              <div className="eyebrow" style={{ marginBottom:6 }}>XP (назначается вручную)</div>
               <input className="ss-input" type="number" min="1" value={form.xp}
                 onChange={e => set("xp", parseInt(e.target.value, 10) || 0)} />
             </div>
@@ -54,13 +52,14 @@ const WorkoutModal = ({ workout, onSave, onDelete, onClose }) => {
               onChange={e => set("date", e.target.value)} />
           </div>
           <div style={{ background:"var(--bg-2)", borderRadius:8, padding:"10px 14px", fontSize:12, color:"var(--text-3)" }}>
-            Начислится XP: <span className="num" style={{ color:"var(--accent)" }}>+{form.xp}</span>
+            {isNew ? "Будет начислено" : "Текущее значение"}:{" "}
+            <span className="num" style={{ color:"var(--accent)" }}>+{form.xp} XP</span>
           </div>
-
           <div style={{ display:"flex", gap:8, justifyContent:"space-between", marginTop:8 }}>
             <div>
               {!isNew && (
-                <button className="ss-btn danger" onClick={() => { if (confirm("Удалить тренировку?")) { onDelete(workout.id); onClose(); } }}>
+                <button className="ss-btn danger"
+                  onClick={() => { if(confirm("Удалить тренировку? XP будет сожжён.")) { onDelete(workout); onClose(); } }}>
                   ✕ Удалить
                 </button>
               )}
@@ -86,6 +85,8 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
   const [measForm, setMeasForm] = useState({ ...workouts.measurements.current });
   const [workoutModal, setWorkoutModal] = useState(null);
   const [showAllLog, setShowAllLog] = useState(false);
+  const [weightInput, setWeightInput] = useState("");
+  const [weightDate, setWeightDate] = useState(today.toISOString().split("T")[0]);
 
   const year     = today.getFullYear();
   const month    = today.getMonth();
@@ -94,12 +95,12 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
   const todayStr = today.toISOString().split("T")[0];
 
   const workoutDates = new Set((workouts.log || []).map(w => w.date));
+  const weightLog    = workouts.weightLog || [];
 
-  /* Add workout */
+  /* ─ Add/edit workout ─ */
   const saveWorkout = (form) => {
     const xp = parseInt(form.xp, 10) || 100;
     if (workoutModal && workoutModal.id) {
-      // Edit existing
       setWorkouts(w => ({
         ...w,
         log: (w.log || []).map(e =>
@@ -107,18 +108,23 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
         )
       }));
     } else {
-      // New
       const entry = { id: "wl" + Date.now(), date: form.date, type: form.type, xp };
       setWorkouts(w => ({ ...w, log: [entry, ...(w.log || [])] }));
+      if (setProfile) setProfile(p => SSEngine.addXp(p, xp));
       logEvent(`Тренировка: ${form.type}`, `+${xp}`);
     }
   };
 
-  const deleteWorkout = (id) => {
-    setWorkouts(w => ({ ...w, log: (w.log || []).filter(e => e.id !== id) }));
+  /* ─ Delete workout (burns XP) ─ */
+  const deleteWorkout = (workout) => {
+    setWorkouts(w => ({ ...w, log: (w.log || []).filter(e => e.id !== workout.id) }));
+    if (setProfile && workout.xp) {
+      setProfile(p => SSEngine.subtractXp(p, workout.xp));
+      logEvent(`Тренировка отменена: ${workout.type}`, `-${workout.xp}`);
+    }
   };
 
-  /* Measurements */
+  /* ─ Measurements + XP ─ */
   const XP_PER_CM = { chest: 15, hips: 10, biceps: 25, thigh: 10 };
 
   const saveMeasurements = () => {
@@ -138,13 +144,28 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
     });
 
     setWorkouts(w => ({ ...w, measurements: { ...w.measurements, current: parsed } }));
-
     if (totalXp > 0 && setProfile) {
       setProfile(p => SSEngine.addXp(p, totalXp));
       logEvent(`Замеры: ${gains.join(", ")}`, `+${totalXp}`);
     }
     setEditMeasurements(false);
   };
+
+  /* ─ Weight log ─ */
+  const addWeight = () => {
+    const val = parseFloat(weightInput);
+    if (!val || val <= 0) return;
+    const entry = { id: "wt" + Date.now(), date: weightDate, value: val };
+    setWorkouts(w => ({ ...w, weightLog: [entry, ...(w.weightLog || [])].sort((a,b) => b.date.localeCompare(a.date)) }));
+    setWeightInput("");
+    logEvent(`Вес: ${val} кг`, "");
+  };
+
+  const deleteWeightEntry = (id) => {
+    setWorkouts(w => ({ ...w, weightLog: (w.weightLog || []).filter(e => e.id !== id) }));
+  };
+
+  const latestWeight = weightLog.length > 0 ? weightLog[0].value : null;
 
   const MONTH_NAMES = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
   const DAY_NAMES   = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
@@ -158,7 +179,7 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
           <div className="eyebrow">Физическое развитие</div>
           <h1>Тренировки</h1>
         </div>
-        <button className="ss-btn" onClick={() => setWorkoutModal({ mode: "new" })}>+ Тренировка</button>
+        <button className="ss-btn" onClick={() => setWorkoutModal({ mode:"new" })}>+ Тренировка</button>
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
@@ -168,9 +189,7 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
           <div className="eyebrow" style={{ marginBottom:12 }}>{MONTH_NAMES[month]} {year}</div>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4, marginBottom:8 }}>
             {DAY_NAMES.map(d => (
-              <div key={d} style={{ textAlign:"center", fontSize:9, color:"var(--text-4)", fontFamily:"var(--font-mono)", padding:"2px 0" }}>
-                {d}
-              </div>
+              <div key={d} style={{ textAlign:"center", fontSize:9, color:"var(--text-4)", fontFamily:"var(--font-mono)", padding:"2px 0" }}>{d}</div>
             ))}
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4 }}>
@@ -194,15 +213,18 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
               );
             })}
           </div>
-          <div style={{ marginTop:16, paddingTop:14, borderTop:"1px solid var(--line-1)", display:"flex", gap:8, alignItems:"center" }}>
+          <div style={{ marginTop:16, paddingTop:14, borderTop:"1px solid var(--line-1)", display:"flex", gap:16, alignItems:"center" }}>
             <span style={{ fontSize:11, color:"var(--text-3)" }}>Всего:</span>
-            <span className="num" style={{ fontSize:13, color:"var(--accent)" }}>
-              {(workouts.log||[]).length} тренировок
-            </span>
+            <span className="num" style={{ fontSize:13, color:"var(--accent)" }}>{(workouts.log||[]).length} тренировок</span>
+            {latestWeight && (
+              <span className="num" style={{ fontSize:13, color:"var(--teal)", marginLeft:"auto" }}>
+                ⚖ {latestWeight} кг
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Log */}
+        {/* Workout log */}
         <div className="ss-card" style={{ padding:20 }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
             <div className="eyebrow">Журнал тренировок</div>
@@ -217,16 +239,12 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
               <span className="num" style={{ fontSize:10, color:"var(--text-3)", width:56, flexShrink:0 }}>{fmtDate(w.date)}</span>
               <span style={{ flex:1, fontSize:13 }}>{w.type}</span>
               <span className="num" style={{ fontSize:11, color:"var(--accent)", minWidth:36, textAlign:"right" }}>+{w.xp}</span>
-              <button
-                onClick={() => setWorkoutModal(w)}
-                style={{ background:"none", border:"none", cursor:"pointer", color:"var(--text-4)", fontSize:13, padding:"0 3px", lineHeight:1 }}
-                title="Редактировать"
-              >✎</button>
-              <button
-                onClick={() => { if (confirm("Удалить тренировку?")) deleteWorkout(w.id); }}
-                style={{ background:"none", border:"none", cursor:"pointer", color:"var(--text-4)", fontSize:13, padding:"0 3px", lineHeight:1 }}
-                title="Удалить"
-              >✕</button>
+              <button onClick={() => setWorkoutModal(w)}
+                style={{ background:"none", border:"none", cursor:"pointer", color:"var(--text-4)", fontSize:13, padding:"0 3px" }}
+                title="Редактировать">✎</button>
+              <button onClick={() => { if(confirm("Удалить? XP будет сожжён.")) deleteWorkout(w); }}
+                style={{ background:"none", border:"none", cursor:"pointer", color:"var(--text-4)", fontSize:13, padding:"0 3px" }}
+                title="Удалить">✕</button>
             </div>
           ))}
           {(workouts.log || []).length === 0 && (
@@ -235,10 +253,74 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
           {(workouts.log || []).length > 8 && (
             <button className="ss-ghost-btn" style={{ width:"100%", marginTop:10, fontSize:11 }}
               onClick={() => setShowAllLog(v => !v)}>
-              {showAllLog ? "↑ Свернуть" : `↓ Показать все (${(workouts.log||[]).length})`}
+              {showAllLog ? "↑ Свернуть" : `↓ Все (${(workouts.log||[]).length})`}
             </button>
           )}
         </div>
+      </div>
+
+      {/* Weight log */}
+      <div className="ss-card" style={{ padding:20, marginBottom:14 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+          <div>
+            <div className="eyebrow">Мой вес</div>
+            {latestWeight && (
+              <div style={{ fontFamily:"var(--font-display)", fontSize:28, color:"var(--teal)", marginTop:4 }}>
+                {latestWeight} кг
+              </div>
+            )}
+          </div>
+          <div style={{ display:"flex", gap:8, alignItems:"flex-end" }}>
+            <div>
+              <div className="eyebrow" style={{ marginBottom:4 }}>Дата</div>
+              <input className="ss-input" type="date" value={weightDate}
+                onChange={e => setWeightDate(e.target.value)} style={{ width:130 }} />
+            </div>
+            <div>
+              <div className="eyebrow" style={{ marginBottom:4 }}>Вес (кг)</div>
+              <input className="ss-input" type="number" step="0.1" value={weightInput}
+                onChange={e => setWeightInput(e.target.value)} placeholder="0.0"
+                style={{ width:90 }}
+                onKeyDown={e => e.key === "Enter" && addWeight()} />
+            </div>
+            <button className="ss-btn" onClick={addWeight} disabled={!weightInput}>+ Записать</button>
+          </div>
+        </div>
+
+        {weightLog.length === 0 && (
+          <div style={{ color:"var(--text-3)", fontSize:13 }}>Записей нет — добавь первый замер</div>
+        )}
+        {weightLog.length > 0 && (
+          <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+            {weightLog.slice(0, 20).map((e, i) => {
+              const prev = weightLog[i + 1];
+              const delta = prev ? (e.value - prev.value).toFixed(1) : null;
+              const color = delta === null ? "var(--text-2)"
+                : parseFloat(delta) > 0 ? "var(--leaf)"
+                : parseFloat(delta) < 0 ? "var(--crimson)"
+                : "var(--text-3)";
+              return (
+                <div key={e.id} style={{
+                  background:"var(--bg-2)", border:"1px solid var(--line-1)",
+                  borderRadius:8, padding:"8px 12px", minWidth:90, textAlign:"center",
+                  position:"relative"
+                }}>
+                  <div className="num" style={{ fontSize:10, color:"var(--text-3)", marginBottom:2 }}>{fmtDate(e.date)}</div>
+                  <div style={{ fontFamily:"var(--font-display)", fontSize:20, color:"var(--text-1)" }}>{e.value}</div>
+                  <div style={{ fontSize:9, color:"var(--text-3)" }}>кг</div>
+                  {delta !== null && (
+                    <div style={{ fontSize:10, color, marginTop:2 }}>
+                      {parseFloat(delta) > 0 ? "+" : ""}{delta}
+                    </div>
+                  )}
+                  <button onClick={() => deleteWeightEntry(e.id)}
+                    style={{ position:"absolute", top:4, right:4, background:"none", border:"none", cursor:"pointer",
+                      color:"var(--text-4)", fontSize:10, lineHeight:1 }}>✕</button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* PRs */}
@@ -246,16 +328,17 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
         <div className="eyebrow" style={{ marginBottom:14 }}>Личные рекорды</div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px,1fr))", gap:10 }}>
           {(workouts.prs || []).map((pr, i) => (
-            <div key={i} style={{
-              display:"flex", alignItems:"center", gap:10, padding:"10px 14px",
-              background:"var(--bg-2)", borderRadius:8, border:"1px solid var(--line-1)"
-            }}>
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px",
+              background:"var(--bg-2)", borderRadius:8, border:"1px solid var(--line-1)" }}>
               <span style={{ flex:1, fontSize:13, color:"var(--text-2)" }}>{pr.lift}</span>
               <span style={{ fontFamily:"var(--font-display)", fontSize:20, color:"var(--accent)" }}>{pr.value}</span>
               <span style={{ fontSize:11, color:"var(--text-3)" }}>{pr.unit}</span>
               <span className="num" style={{ fontSize:10, color:"var(--text-4)" }}>{fmtDate(pr.date)}</span>
             </div>
           ))}
+          {(workouts.prs || []).length === 0 && (
+            <div style={{ color:"var(--text-3)", fontSize:13 }}>Нет рекордов</div>
+          )}
         </div>
       </div>
 
@@ -285,23 +368,21 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
             const pct = isWaist ? 50 : tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 50;
             return (
               <div key={key} style={{ textAlign:"center" }}>
-                <div className="eyebrow" style={{ marginBottom:8 }}>
-                  {MEASUREMENT_LABELS[key]}
-                </div>
+                <div className="eyebrow" style={{ marginBottom:8 }}>{MEASUREMENT_LABELS[key]}</div>
                 {editMeasurements
                   ? <input className="ss-input" type="number" step="0.1"
                       value={measForm[key] || ""} onChange={e => setMeasForm(f => ({ ...f, [key]: e.target.value }))}
                       style={{ textAlign:"center", marginBottom:8 }} />
-                  : <div style={{ fontFamily:"var(--font-display)", fontSize:24, color:"var(--text-1)", marginBottom:4 }}>{cur}</div>
+                  : <div style={{ fontFamily:"var(--font-display)", fontSize:24, color:"var(--text-1)", marginBottom:4 }}>{cur || "—"}</div>
                 }
                 {isWaist
                   ? <div style={{ fontSize:10, color:"var(--text-4)", marginBottom:14 }}>нейтрально</div>
                   : <>
                     <div style={{ fontSize:10, color:"var(--text-3)", marginBottom:6 }}>цель: {tgt} см</div>
-                    <div style={{ fontSize:10, color:diffColor, marginBottom:8 }}>
+                    {cur > 0 && <div style={{ fontSize:10, color:diffColor, marginBottom:8 }}>
                       {diffNum >= 0 ? "+" : ""}{diff} от цели
-                    </div>
-                    <XPBar pct={pct} compact />
+                    </div>}
+                    {cur > 0 && <XPBar pct={pct} compact />}
                   </>
                 }
               </div>
@@ -310,7 +391,6 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
         </div>
       </div>
 
-      {/* Workout modal */}
       {workoutModal && (
         <WorkoutModal
           workout={workoutModal}

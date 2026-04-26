@@ -1,4 +1,82 @@
-const { useState, useEffect, useCallback } = React;
+const { useState, useEffect, useCallback, useRef } = React;
+
+/* ── Achievement auto-unlock triggers ──────────────────────────── */
+const ACHIEVEMENT_TRIGGERS = {
+  // Сила
+  a3:  ({ workouts }) => {
+    const now = new Date(), m = now.getMonth(), y = now.getFullYear();
+    return (workouts.prs || []).filter(pr => {
+      const d = new Date(pr.date);
+      return d.getMonth() === m && d.getFullYear() === y;
+    }).length >= 3;
+  },
+  a4:  ({ workouts }) => (workouts.log || []).length >= 100,
+  a5:  ({ workouts }) => (workouts.prs || []).length >= 1,
+
+  // Дисциплина
+  a6:  ({ profile }) => (profile.streak || 0) >= 30,
+  a7:  ({ profile }) => (profile.streak || 0) >= 7,
+  a9:  ({ quests })  => quests.some(q => q.boss && q.done),
+  a11: ({ profile }) => (profile.streak || 0) >= 7,
+
+  // Контент
+  a13: ({ content }) => content.filter(c => c.type === "reels" && c.status === "published").length >= 10,
+  a14: ({ content }) => content.filter(c => c.type === "tg"    && c.status === "published").length >= 30,
+  a15: ({ content }) => content.some(c => c.status === "published"),
+  a16: ({ content }) => {
+    const counts = {};
+    content.filter(c => c.status === "published").forEach(c => {
+      counts[c.date] = (counts[c.date] || 0) + 1;
+    });
+    return Object.values(counts).some(n => n >= 3);
+  },
+  a17: ({ content }) => {
+    const tones = new Set(content.filter(c => c.status === "published").map(c => c.tone));
+    return ["Провокация", "Подруга-эксперт", "Лёгкий юмор"].every(t => tones.has(t));
+  },
+
+  // Бизнес
+  a18: ({ leads }) => leads.some(l => l.stage === "paid"),
+  a19: ({ wallet }) => {
+    const now = new Date(), m = now.getMonth(), y = now.getFullYear();
+    return (wallet.entries || [])
+      .filter(e => { if (e.type !== "income") return false; const d = new Date(e.date); return d.getMonth()===m && d.getFullYear()===y; })
+      .reduce((s, e) => s + e.amount, 0) >= 100000;
+  },
+  a20: ({ leads }) => leads.filter(l => l.stage === "paid").length >= 10,
+  a21: ({ leads }) => leads.filter(l => l.stage === "done").length >= 5,
+  a22: ({ wallet }) => (wallet.balance || 0) >= (wallet.goal || Infinity),
+
+  // Интеллект
+  a24: ({ profile }) => (profile.streak || 0) >= 7,
+  a25: ({ stats })   => Object.values(stats).some(s => s.value >= 60),
+
+  // Скрытые
+  a26: ({ eventLog }) => {
+    const today = new Date().toDateString();
+    return (eventLog || [])
+      .filter(e => e.when && new Date(e.when).toDateString() === today)
+      .reduce((s, e) => { const n = parseInt(String(e.xp||"").replace(/\D/g,""),10); return s+(isNaN(n)?0:n); }, 0) >= 1000;
+  },
+  a27: ({ quests }) => quests.some(q => {
+    if (!q.completedAt) return false;
+    const h = new Date(q.completedAt).getHours();
+    return h >= 0 && h < 5;
+  }),
+  a28: ({ quests }) => quests.length >= 20,
+  a30: ({ achievements }) => achievements.filter(a => a.done).length >= 15,
+
+  // Тело (масса)
+  a31: ({ workouts }) => (workouts.measurements?.current?.chest  || 0) >= 98,
+  a32: ({ workouts }) => (workouts.measurements?.current?.biceps || 0) >= 36,
+  a33: ({ workouts }) => (workouts.measurements?.current?.thigh  || 0) >= 60,
+  a34: ({ workouts, _prevMeasurements }) => false, // fired manually from saveMeasurements
+  a35: ({ workouts }) => {
+    const cur = workouts.measurements?.current || {};
+    const tgt = workouts.measurements?.target  || {};
+    return ["chest","hips","biceps","thigh"].every(k => (cur[k]||0) >= (tgt[k]||0));
+  },
+};
 
 const NAV = [
   { id: "home",         label: "Главная",      icon: "◎" },
@@ -6,7 +84,7 @@ const NAV = [
   { id: "quests",       label: "Квесты",       icon: "⚔" },
   { id: "workouts",     label: "Тренировки",   icon: "△" },
   { id: "content",      label: "Контент-план", icon: "✎" },
-  { id: "crm",          label: "CRM / Лиды",   icon: "◐" },
+  { id: "crm",          label: "Личная база",  icon: "◐" },
   { id: "wallet",       label: "Кошелёк",      icon: "◈" },
   { id: "achievements", label: "Достижения",   icon: "✦" }
 ];
@@ -21,6 +99,11 @@ function useAppState() {
   const [workouts,     setWorkouts]     = useState(() => SSStorage.get("workouts",     SSSeed.workouts));
   const [achievements, setAchievements] = useState(() => SSStorage.get("achievements", SSSeed.achievements));
   const [eventLog,     setEventLog]     = useState(() => SSStorage.get("eventLog",     []));
+  const [achPopup,     setAchPopup]     = useState(null);
+
+  // Always-current ref for achievements to avoid stale-closure issues
+  const achRef = useRef(achievements);
+  useEffect(() => { achRef.current = achievements; }, [achievements]);
 
   useEffect(() => SSStorage.set("profile",      profile),      [profile]);
   useEffect(() => SSStorage.set("stats",        stats),        [stats]);
@@ -31,6 +114,49 @@ function useAppState() {
   useEffect(() => SSStorage.set("workouts",     workouts),     [workouts]);
   useEffect(() => SSStorage.set("achievements", achievements), [achievements]);
   useEffect(() => SSStorage.set("eventLog",     eventLog.slice(0, 50)), [eventLog]);
+
+  // ── Trigger checks ─────────────────────────────────────────────
+  const questDoneCount  = quests.filter(q => q.done).length;
+  const bossQuestDone   = quests.some(q => q.boss && q.done) ? 1 : 0;
+  const workoutCount    = (workouts.log || []).length;
+  const prCount         = (workouts.prs || []).length;
+  const leadDoneCount   = leads.filter(l => l.stage === "done").length;
+  const leadPaidCount   = leads.filter(l => l.stage === "paid").length;
+  const publishedCount  = content.filter(c => c.status === "published").length;
+  const chest   = workouts.measurements?.current?.chest  || 0;
+  const biceps  = workouts.measurements?.current?.biceps || 0;
+  const thigh   = workouts.measurements?.current?.thigh  || 0;
+  const maxStat = Math.max(...Object.values(stats).map(s => s.value || 0));
+
+  useEffect(() => {
+    const state = { profile, quests, workouts, leads, content, wallet, eventLog, stats,
+                    achievements: achRef.current };
+    const toUnlock = achRef.current.filter(a =>
+      !a.done && ACHIEVEMENT_TRIGGERS[a.id] && ACHIEVEMENT_TRIGGERS[a.id](state)
+    );
+    if (toUnlock.length === 0) return;
+
+    setAchievements(prev =>
+      prev.map(a => toUnlock.find(u => u.id === a.id) ? { ...a, done: true } : a)
+    );
+    toUnlock.forEach(ach => {
+      setProfile(p => SSEngine.addXp(p, 150));
+    });
+    // batch log + popup after state flush
+    Promise.resolve().then(() => {
+      toUnlock.forEach(ach => {
+        setEventLog(prev => {
+          const ts = new Date().toLocaleTimeString("ru-RU", { hour:"2-digit", minute:"2-digit" });
+          return [{ t: ts, txt: `✦ Ачивка: «${ach.title}»`, xp: "+150", when: Date.now() }, ...prev].slice(0, 50);
+        });
+      });
+      setAchPopup(toUnlock[0]);
+      setTimeout(() => setAchPopup(null), 4000);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.streak, profile.level, questDoneCount, bossQuestDone,
+      workoutCount, prCount, leadDoneCount, leadPaidCount, publishedCount,
+      chest, biceps, thigh, wallet.balance, eventLog.length, maxStat]);
 
   const logEvent = useCallback((txt, xp) => {
     const ts = new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
@@ -57,7 +183,16 @@ function useAppState() {
     });
   }, [logEvent]);
 
-  const undoQuest   = useCallback((qid) => setQuests(qs => qs.map(x => x.id === qid ? { ...x, done: false } : x)), []);
+  const undoQuest = useCallback((qid) => {
+    setQuests(qs => {
+      const q = qs.find(x => x.id === qid);
+      if (!q || !q.done) return qs;
+      const xp = SSEngine.xpFor(q, q.streak || 0);
+      setProfile(p => SSEngine.subtractXp(p, xp));
+      logEvent(`«${q.title}» — отменено`, `-${xp}`);
+      return qs.map(x => x.id === qid ? { ...x, done: false, completedAt: undefined } : x);
+    });
+  }, [logEvent]);
   const addQuest    = useCallback((q) => {
     const nq = { id: "q" + Date.now(), done: false, streak: 0, ...q };
     setQuests(qs => [nq, ...qs]);
@@ -71,7 +206,8 @@ function useAppState() {
     quests, completeQuest, undoQuest, addQuest, updateQuest, deleteQuest, setQuests,
     leads, setLeads, content, setContent, wallet, setWallet,
     workouts, setWorkouts, achievements, setAchievements,
-    eventLog, logEvent
+    eventLog, logEvent,
+    achPopup, setAchPopup
   };
 }
 

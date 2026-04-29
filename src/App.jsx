@@ -12,7 +12,7 @@ const App = () => {
 
   return (
     <div className="ss-app">
-      <Sidebar tab={tab} setTab={setTab} profile={state.profile} />
+      <Sidebar tab={tab} setTab={setTab} profile={state.profile} syncStatus={state.syncStatus} />
       <main className="ss-main">
         {tab === "home"         && <HomePage      {...pageProps} />}
         {tab === "character"    && <CharacterPage {...pageProps} />}

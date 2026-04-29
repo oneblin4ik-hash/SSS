@@ -107,7 +107,7 @@ const HomePage = ({ profile, stats, quests, wallet, eventLog, completeQuest, und
               <div style={{ fontFamily: "var(--font-display)", fontSize: 15, marginBottom: 8 }}>{bossQuest.title}</div>
               <XPBar pct={bossQuest.done ? 100 : 0} />
               <div className="num" style={{ marginTop: 5, fontSize: 10, color: "var(--text-3)" }}>
-                {bossQuest.done ? "✓ Выполнен" : `+${bossQuest.xp} XP за победу`}
+                {bossQuest.done ? "✓ Выполнен" : `+${SSEngine.xpFor(bossQuest, bossQuest.streak || 0)} XP за победу`}
               </div>
             </div>
           ) : (

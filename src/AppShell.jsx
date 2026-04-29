@@ -100,10 +100,46 @@ function useAppState() {
   const [achievements, setAchievements] = useState(() => SSStorage.get("achievements", SSSeed.achievements));
   const [eventLog,     setEventLog]     = useState(() => SSStorage.get("eventLog",     []));
   const [achPopup,     setAchPopup]     = useState(null);
+  const [syncStatus,   setSyncStatus]   = useState("idle"); // "idle" | "loading" | "saving" | "ok" | "error"
 
   // Always-current ref for achievements to avoid stale-closure issues
   const achRef = useRef(achievements);
   useEffect(() => { achRef.current = achievements; }, [achievements]);
+
+  // ── Cloud sync: load on mount ───────────────────────────────────
+  const cloudReadyRef = useRef(false);
+  useEffect(() => {
+    setSyncStatus("loading");
+    SSStorage.loadFromCloud().then(data => {
+      if (data) {
+        if (data.profile)      setProfile(data.profile);
+        if (data.stats)        setStats(data.stats);
+        if (data.quests)       setQuests(data.quests);
+        if (data.leads)        setLeads(data.leads);
+        if (data.content)      setContent(data.content);
+        if (data.wallet)       setWallet(data.wallet);
+        if (data.workouts)     setWorkouts(data.workouts);
+        if (data.achievements) setAchievements(data.achievements);
+        if (data.eventLog)     setEventLog(data.eventLog);
+      }
+      setSyncStatus("ok");
+      cloudReadyRef.current = true;
+    });
+  }, []);
+
+  // ── Cloud sync: debounced auto-save on any state change ─────────
+  const stateRef = useRef({});
+  stateRef.current = { profile, stats, quests, leads, content, wallet, workouts, achievements, eventLog };
+  const saveTimerRef = useRef(null);
+  useEffect(() => {
+    if (!cloudReadyRef.current) return;
+    setSyncStatus("saving");
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      SSStorage.saveToCloud(stateRef.current).then(() => setSyncStatus("ok"));
+    }, 2000);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, stats, quests, leads, content, wallet, workouts, achievements, eventLog]);
 
   useEffect(() => SSStorage.set("profile",      profile),      [profile]);
   useEffect(() => SSStorage.set("stats",        stats),        [stats]);
@@ -207,11 +243,20 @@ function useAppState() {
     leads, setLeads, content, setContent, wallet, setWallet,
     workouts, setWorkouts, achievements, setAchievements,
     eventLog, logEvent,
-    achPopup, setAchPopup
+    achPopup, setAchPopup,
+    syncStatus
   };
 }
 
-const Sidebar = ({ tab, setTab, profile }) => {
+const SYNC_LABELS = {
+  idle:    { icon: "○",  color: "var(--text-4)", label: "" },
+  loading: { icon: "⟳",  color: "var(--text-3)", label: "загрузка..." },
+  saving:  { icon: "⟳",  color: "var(--text-3)", label: "сохранение..." },
+  ok:      { icon: "✓",  color: "var(--leaf)",   label: "синхронизировано" },
+  error:   { icon: "✕",  color: "var(--crimson)", label: "ошибка" },
+};
+
+const Sidebar = ({ tab, setTab, profile, syncStatus }) => {
   const pct = Math.round(((profile.xp || 0) / (profile.xpToNext || 1)) * 100);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -284,6 +329,14 @@ const Sidebar = ({ tab, setTab, profile }) => {
         </div>
 
         <div style={{ position: "relative", marginTop: 8 }}>
+          {syncStatus && syncStatus !== "idle" && (() => {
+            const s = SYNC_LABELS[syncStatus] || SYNC_LABELS.idle;
+            return (
+              <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6, fontSize: 10, color: s.color }}>
+                <span>{s.icon}</span><span>{s.label}</span>
+              </div>
+            );
+          })()}
           <button className="ss-ghost-btn" style={{ width: "100%" }} onClick={() => setMenuOpen(v => !v)}>
             ⚙ Данные
           </button>

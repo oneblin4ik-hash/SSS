@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Про Поток — онлайн-сопровождение Эдуарда Серболина</title>
+  <meta name="description" content="Поток — персональное онлайн-сопровождение по тренировкам и питанию. Программа, корректировки, связь с тренером и система, которая доводит до результата." />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --font-display: "Cormorant Garamond", serif;
+      --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+      --bg-0: #0a0b0e;
+      --bg-1: #101216;
+      --bg-2: #171a20;
+      --bg-3: #1f232b;
+
+      --line-1: rgba(255,255,255,0.06);
+      --line-2: rgba(255,255,255,0.10);
+      --line-3: rgba(255,255,255,0.16);
+
+      --text-1: #f2ede3;
+      --text-2: #c9c3b6;
+      --text-3: #8b8578;
+
+      --accent: oklch(0.82 0.14 75);
+      --accent-2: oklch(0.68 0.16 55);
+      --amber-glow: oklch(0.82 0.14 75 / 0.22);
+
+      --r-md: 10px;
+      --r-lg: 14px;
+      --r-xl: 20px;
+
+      --shadow-card: 0 1px 0 rgba(255,255,255,0.03) inset, 0 10px 30px rgba(0,0,0,0.4);
+      --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg-0); color: var(--text-1);
+      font-family: var(--font-sans); -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    /* ---------- header ---------- */
+    header {
+      position: sticky; top: 0; z-index: 50;
+      background: color-mix(in srgb, var(--bg-0) 82%, transparent);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line-1);
+    }
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .brand {
+      font-family: var(--font-display);
+      font-size: 22px; font-weight: 600; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--text-1); text-decoration: none;
+    }
+    .brand em { font-style: normal; color: var(--accent); }
+    .nav-cta {
+      font-size: 14px; font-weight: 600;
+      padding: 9px 18px; border-radius: 999px;
+      color: var(--bg-0); background: var(--accent);
+      text-decoration: none; transition: transform .2s var(--ease-out), box-shadow .2s var(--ease-out);
+    }
+    .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 20px var(--amber-glow); }
+
+    /* ---------- hero ---------- */
+    .hero { position: relative; padding: 96px 0 88px; text-align: center; }
+    .hero::before {
+      content: ""; position: absolute; inset: -40% -20% auto;
+      height: 520px; pointer-events: none;
+      background: radial-gradient(ellipse at 50% 0%, var(--amber-glow), transparent 65%);
+    }
+    .hero-kicker {
+      display: inline-block; margin-bottom: 20px;
+      font-size: 13px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--accent);
+      padding: 7px 16px; border: 1px solid var(--line-2); border-radius: 999px;
+      background: var(--bg-1);
+    }
+    h1 {
+      margin: 0 auto 22px; max-width: 780px;
+      font-family: var(--font-display); font-weight: 600;
+      font-size: clamp(38px, 6vw, 64px); line-height: 1.08;
+    }
+    h1 .gold { color: var(--accent); }
+    .hero-sub {
+      margin: 0 auto 36px; max-width: 620px;
+      color: var(--text-2); font-size: 18px; line-height: 1.65;
+    }
+    .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-block; text-decoration: none; font-weight: 600;
+      border-radius: 999px; transition: transform .2s var(--ease-out), box-shadow .2s var(--ease-out), background .2s;
+    }
+    .btn-primary {
+      padding: 16px 34px; font-size: 16px;
+      color: var(--bg-0); background: var(--accent);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 34px var(--amber-glow); }
+    .btn-ghost {
+      padding: 16px 34px; font-size: 16px;
+      color: var(--text-1); border: 1px solid var(--line-3);
+    }
+    .btn-ghost:hover { background: var(--bg-2); }
+    .hero-note { margin-top: 18px; font-size: 13px; color: var(--text-3); }
+
+    /* ---------- sections ---------- */
+    section { padding: 76px 0; border-top: 1px solid var(--line-1); }
+    .sec-kicker {
+      font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 14px;
+    }
+    h2 {
+      margin: 0 0 14px; font-family: var(--font-display); font-weight: 600;
+      font-size: clamp(30px, 4.2vw, 44px); line-height: 1.12;
+    }
+    .sec-lead { max-width: 640px; color: var(--text-2); font-size: 17px; line-height: 1.65; margin: 0 0 44px; }
+
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+
+    .card {
+      background: var(--bg-1); border: 1px solid var(--line-1);
+      border-radius: var(--r-xl); padding: 28px;
+      box-shadow: var(--shadow-card);
+    }
+    .card h3 { margin: 0 0 10px; font-size: 18px; font-weight: 600; }
+    .card p { margin: 0; color: var(--text-2); font-size: 15px; line-height: 1.65; }
+    .card .ico {
+      width: 44px; height: 44px; margin-bottom: 18px;
+      display: grid; place-items: center;
+      border-radius: 12px; background: var(--bg-2); border: 1px solid var(--line-2);
+      color: var(--accent); font-size: 20px;
+    }
+
+    /* ---------- steps ---------- */
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; counter-reset: step; }
+    .step { position: relative; background: var(--bg-1); border: 1px solid var(--line-1); border-radius: var(--r-xl); padding: 26px; }
+    .step::before {
+      counter-increment: step; content: "0" counter(step);
+      display: block; margin-bottom: 16px;
+      font-family: var(--font-display); font-size: 34px; font-weight: 600; color: var(--accent);
+    }
+    .step h3 { margin: 0 0 8px; font-size: 16px; }
+    .step p { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.6; }
+
+    /* ---------- pricing ---------- */
+    .price-card { display: flex; flex-direction: column; position: relative; }
+    .price-card.featured { border-color: color-mix(in srgb, var(--accent) 45%, transparent); box-shadow: 0 0 0 1px var(--amber-glow), var(--shadow-card); }
+    .badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+      background: var(--accent); color: var(--bg-0);
+      padding: 5px 14px; border-radius: 999px; white-space: nowrap;
+    }
+    .card p.price-name { font-size: 13px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-3); margin: 0 0 14px; }
+    .card p.price-value { font-family: var(--font-display); font-size: 40px; font-weight: 600; margin: 0; color: var(--text-1); line-height: 1.1; }
+    .price-value small { font-family: var(--font-sans); font-size: 14px; color: var(--text-3); font-weight: 500; }
+    .price-list { list-style: none; margin: 22px 0 26px; padding: 0; flex: 1; }
+    .price-list li {
+      position: relative; padding: 7px 0 7px 26px;
+      color: var(--text-2); font-size: 14.5px; line-height: 1.5;
+    }
+    .price-list li::before { content: "✦"; position: absolute; left: 2px; color: var(--accent); font-size: 12px; top: 9px; }
+    .price-card .btn { text-align: center; }
+
+    /* ---------- about ---------- */
+    .about { display: grid; grid-template-columns: 300px 1fr; gap: 44px; align-items: center; }
+    .about-visual {
+      aspect-ratio: 3 / 4; border-radius: var(--r-xl);
+      background:
+        radial-gradient(ellipse at 30% 20%, var(--amber-glow), transparent 60%),
+        linear-gradient(160deg, var(--bg-2), var(--bg-1));
+      border: 1px solid var(--line-2);
+      display: grid; place-items: center;
+    }
+    .about-visual span {
+      font-family: var(--font-display); font-size: 90px; font-weight: 600; color: var(--accent);
+    }
+    .about p { color: var(--text-2); font-size: 16px; line-height: 1.7; margin: 0 0 16px; }
+    .about-points { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+    .chip {
+      font-size: 13px; font-weight: 500; color: var(--text-2);
+      padding: 8px 16px; border-radius: 999px;
+      border: 1px solid var(--line-2); background: var(--bg-1);
+    }
+
+    /* ---------- faq ---------- */
+    .faq { max-width: 760px; }
+    details {
+      background: var(--bg-1); border: 1px solid var(--line-1);
+      border-radius: var(--r-lg); margin-bottom: 12px; overflow: hidden;
+    }
+    summary {
+      cursor: pointer; list-style: none;
+      padding: 20px 24px; font-weight: 600; font-size: 16px;
+      display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--accent); font-size: 22px; font-weight: 400; flex-shrink: 0; transition: transform .2s var(--ease-out); }
+    details[open] summary::after { transform: rotate(45deg); }
+    details .faq-body { padding: 0 24px 22px; color: var(--text-2); font-size: 15px; line-height: 1.7; }
+
+    /* ---------- final cta ---------- */
+    .final { text-align: center; padding: 96px 0; position: relative; }
+    .final::before {
+      content: ""; position: absolute; inset: auto -20% -60%;
+      height: 460px; pointer-events: none;
+      background: radial-gradient(ellipse at 50% 100%, var(--amber-glow), transparent 65%);
+    }
+    .final h2 { max-width: 640px; margin-left: auto; margin-right: auto; }
+    .final .sec-lead { margin-left: auto; margin-right: auto; text-align: center; }
+
+    footer {
+      border-top: 1px solid var(--line-1); padding: 34px 0;
+      display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
+      color: var(--text-3); font-size: 13px;
+    }
+    footer a { color: var(--text-2); text-decoration: none; }
+    footer a:hover { color: var(--accent); }
+
+    /* ---------- reveal ---------- */
+    .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s var(--ease-out), transform .7s var(--ease-out); }
+    .reveal.in { opacity: 1; transform: none; }
+
+    @media (max-width: 900px) {
+      .grid-3, .steps { grid-template-columns: 1fr 1fr; }
+      .about { grid-template-columns: 1fr; }
+      .about-visual { max-width: 320px; }
+    }
+    @media (max-width: 600px) {
+      .grid-3, .grid-2, .steps { grid-template-columns: 1fr; }
+      section { padding: 56px 0; }
+      .hero { padding: 64px 0 56px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="wrap nav">
+      <a class="brand" href="#top">Про&nbsp;<em>Поток</em></a>
+      <a class="nav-cta js-cta" href="#">Записаться</a>
+    </div>
+  </header>
+
+  <main id="top">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="wrap">
+        <span class="hero-kicker">Онлайн-сопровождение по тренировкам и питанию</span>
+        <h1>Тело меняется, когда есть <span class="gold">система</span>. Войди в&nbsp;поток.</h1>
+        <p class="hero-sub">
+          «Поток» — персональное ведение: программа тренировок под тебя, питание без запретов,
+          еженедельные корректировки и тренер на связи. Ты тренируешься — система доводит до результата.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary js-cta" href="#">Бесплатная консультация</a>
+          <a class="btn btn-ghost" href="#program">Что внутри</a>
+        </div>
+        <p class="hero-note">Консультация ни к чему не обязывает — разберём твою цель и составим план действий.</p>
+      </div>
+    </div>
+
+    <!-- PAIN -->
+    <section>
+      <div class="wrap">
+        <div class="sec-kicker">Знакомо?</div>
+        <h2>Почему «сам с понедельника» не работает</h2>
+        <p class="sec-lead">Дело не в мотивации и не в силе воли. Дело в том, что без системы любой срыв становится финишем.</p>
+        <div class="grid-3">
+          <div class="card reveal">
+            <div class="ico">◐</div>
+            <h3>Начинаешь и бросаешь</h3>
+            <p>Две недели по плану, потом аврал на работе — и всё рассыпалось. Каждый новый заход даётся тяжелее предыдущего.</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico">✕</div>
+            <h3>Диеты, которые ломают</h3>
+            <p>Жёсткие запреты держат месяц, а потом откат и вес возвращается с добавкой. Питание должно вписываться в жизнь, а не заменять её.</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico">?</div>
+            <h3>Тренируешься — результата нет</h3>
+            <p>Ходишь в зал, стараешься, но вес и форма стоят на месте. Без обратной связи не видно, что именно не работает.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROGRAM -->
+    <section id="program">
+      <div class="wrap">
+        <div class="sec-kicker">Что внутри</div>
+        <h2>Сопровождение — это не «файл с программой»</h2>
+        <p class="sec-lead">Это работа с тренером каждую неделю: план, контроль, корректировки и связь, пока цель не достигнута.</p>
+        <div class="grid-3">
+          <div class="card reveal">
+            <div class="ico">⚔</div>
+            <h3>Программа под тебя</h3>
+            <p>Тренировки под твой уровень, график и условия — зал, дом или минимум инвентаря. Никаких шаблонов «для всех».</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico">◈</div>
+            <h3>Питание без запретов</h3>
+            <p>Рацион и КБЖУ под твою цель — похудение или набор. Любимая еда остаётся, уходит только хаос.</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico">↻</div>
+            <h3>Еженедельные корректировки</h3>
+            <p>Каждую неделю разбираем отчёт: вес, замеры, самочувствие — и корректируем план, чтобы прогресс не останавливался.</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico">✉</div>
+            <h3>Тренер на связи</h3>
+            <p>Вопросы по технике, еде, самочувствию — пишешь в чат и получаешь ответ, а не ждёшь следующей тренировки.</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico">▣</div>
+            <h3>Техника под контролем</h3>
+            <p>Присылаешь видео упражнений — получаешь разбор. Правильная техника = результат без травм.</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico">✦</div>
+            <h3>Дисциплина как навык</h3>
+            <p>Выстраиваем привычки и режим так, чтобы система работала даже в загруженные недели. Дисциплина — это навык, а не врождённое.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEPS -->
+    <section>
+      <div class="wrap">
+        <div class="sec-kicker">Как это работает</div>
+        <h2>Четыре шага до старта</h2>
+        <p class="sec-lead">От заявки до первой тренировки по плану — обычно 2–3 дня.</p>
+        <div class="steps">
+          <div class="step reveal">
+            <h3>Заявка</h3>
+            <p>Пишешь в Telegram — я задам несколько вопросов о цели и текущей форме.</p>
+          </div>
+          <div class="step reveal">
+            <h3>Консультация</h3>
+            <p>Бесплатный созвон: разбираем цель, ошибки и строим маршрут. Уже после него у тебя будет ясность.</p>
+          </div>
+          <div class="step reveal">
+            <h3>План</h3>
+            <p>Получаешь программу тренировок и питание под свои условия и график.</p>
+          </div>
+          <div class="step reveal">
+            <h3>Поток</h3>
+            <p>Тренируешься, отчитываешься, получаешь корректировки — и видишь, как меняется тело.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRICING -->
+    <section id="pricing">
+      <div class="wrap">
+        <div class="sec-kicker">Форматы</div>
+        <h2>Выбери свой формат работы</h2>
+        <p class="sec-lead">Точную стоимость и программу под твою цель обсудим на бесплатной консультации.</p>
+        <div class="grid-3">
+          <div class="card price-card reveal">
+            <p class="price-name">Самостоятельный</p>
+            <p class="price-value">от 9 500 ₽ <small>/ мес</small></p>
+            <ul class="price-list">
+              <li>Индивидуальная программа тренировок</li>
+              <li>План питания и КБЖУ под цель</li>
+              <li>Ежемесячное обновление плана</li>
+              <li>Ответы на вопросы раз в неделю</li>
+            </ul>
+            <a class="btn btn-ghost js-cta" href="#">Выбрать</a>
+          </div>
+          <div class="card price-card featured reveal">
+            <span class="badge">Основной формат</span>
+            <p class="price-name">Поток — сопровождение</p>
+            <p class="price-value">от 16 000 ₽ <small>/ мес</small></p>
+            <ul class="price-list">
+              <li>Всё из «Самостоятельного»</li>
+              <li>Еженедельные отчёты и корректировки</li>
+              <li>Разбор техники по видео</li>
+              <li>Связь с тренером в чате без ограничений</li>
+              <li>Работа с режимом и привычками</li>
+            </ul>
+            <a class="btn btn-primary js-cta" href="#">Войти в поток</a>
+          </div>
+          <div class="card price-card reveal">
+            <p class="price-name">Офлайн, Москва</p>
+            <p class="price-value">от 20 000 ₽ <small>/ мес</small></p>
+            <ul class="price-list">
+              <li>Персональные тренировки в зале</li>
+              <li>Постановка техники вживую</li>
+              <li>План питания и КБЖУ</li>
+              <li>Сопровождение между тренировками</li>
+            </ul>
+            <a class="btn btn-ghost js-cta" href="#">Обсудить</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section>
+      <div class="wrap about">
+        <div class="about-visual reveal"><span>ЭС</span></div>
+        <div>
+          <div class="sec-kicker">Кто ведёт</div>
+          <h2>Эдуард Серболин</h2>
+          <p>
+            Тренер и специалист по онлайн-ведению. Работаю с занятыми людьми, которым нужен результат
+            без жизни в зале: программа, питание и контроль встроены в реальный график — работа, семья, командировки.
+          </p>
+          <p>
+            Мой подход — система вместо мотивации. Мотивация заканчивается, система остаётся:
+            понятный план, еженедельная обратная связь и корректировки до результата.
+          </p>
+          <div class="about-points">
+            <span class="chip">Похудение и рекомпозиция</span>
+            <span class="chip">Набор мышечной массы</span>
+            <span class="chip">Тренировки: зал / дом</span>
+            <span class="chip">Питание без запретов</span>
+            <span class="chip">Онлайн по всему миру</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section>
+      <div class="wrap">
+        <div class="sec-kicker">Вопросы</div>
+        <h2>Частые вопросы</h2>
+        <p class="sec-lead">Если своего вопроса не нашёл — просто напиши, отвечу лично.</p>
+        <div class="faq">
+          <details class="reveal">
+            <summary>Я никогда не тренировался. Мне подойдёт?</summary>
+            <div class="faq-body">Да. Программа строится от твоего текущего уровня — новичкам ставим базу и технику, а нагрузку повышаем постепенно. Начинать с нуля со стороны тренера даже проще: нет ошибок, которые надо переучивать.</div>
+          </details>
+          <details class="reveal">
+            <summary>У меня нет зала — только дом и пара гантелей.</summary>
+            <div class="faq-body">Не проблема. Программа адаптируется под твои условия: дом, минимум инвентаря, турник во дворе или полноценный зал. Результат определяет системность, а не оборудование.</div>
+          </details>
+          <details class="reveal">
+            <summary>Придётся сидеть на гречке и курице?</summary>
+            <div class="faq-body">Нет. Питание строится на твоих привычных продуктах под нужный калораж и белок. Любимая еда остаётся в рационе — меняется структура, а не жизнь.</div>
+          </details>
+          <details class="reveal">
+            <summary>Сколько времени нужно на тренировки?</summary>
+            <div class="faq-body">Обычно 3 тренировки в неделю по 45–60 минут. Если график жёсткий — соберём план на 2 тренировки и компенсируем активностью и питанием.</div>
+          </details>
+          <details class="reveal">
+            <summary>Что будет на бесплатной консультации?</summary>
+            <div class="faq-body">Разберём твою цель, текущую форму и прошлый опыт, найдём главные ошибки и составим маршрут. Это созвон на 20–30 минут без обязательств — решение о работе принимаешь после.</div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <div class="final">
+      <div class="wrap">
+        <div class="sec-kicker">Старт нового потока</div>
+        <h2>Место в потоке — для тех, кто решился</h2>
+        <p class="sec-lead">Напиши сейчас — разберём твою цель на бесплатной консультации и решим, по пути ли нам.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary js-cta" href="#">Записаться на консультацию</a>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <div class="wrap" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <span>© <span id="year"></span> Эдуард Серболин · Про Поток</span>
+      <a class="js-cta" href="#">Telegram</a>
+    </div>
+  </footer>
+
+  <script>
+    // ЕДИНАЯ ТОЧКА НАСТРОЙКИ: вставь сюда ссылку на свой Telegram (например, "https://t.me/username")
+    const TG_LINK = "https://t.me/REPLACE_ME";
+
+    document.querySelectorAll(".js-cta").forEach(a => {
+      a.href = TG_LINK;
+      a.target = "_blank";
+      a.rel = "noopener";
+    });
+
+    document.getElementById("year").textContent = new Date().getFullYear();
+
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+  </script>
+</body>
+</html>

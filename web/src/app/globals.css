@@ -1,3 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0d0e12;
+  --color-surface-1: #14151b;
+  --color-surface-2: #191a21;
+  --color-surface-3: #202129;
+  --color-line: #26272f;
+  --color-line-soft: #1e1f27;
+  --color-text: #e7e8ec;
+  --color-text-bright: #ffffff;
+  --color-text-dim: #9a9ba5;
+  --color-text-faint: #6b6c76;
+  --color-accent: #d6a94a;
+  --color-st-live: #4ade80;
+  --color-st-idle: #9a9ba5;
+  --color-st-ban: #f87171;
+  --radius-btn: 8px;
+}
+
 :root {
   --bg: #0d0e12;
   --surface-1: #14151b;

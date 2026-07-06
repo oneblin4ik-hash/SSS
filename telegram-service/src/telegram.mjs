@@ -1,5 +1,6 @@
 import { TelegramClient, Api } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
+import bigInt from "big-integer";
 
 const API_ID = Number(process.env.TELEGRAM_API_ID);
 const API_HASH = process.env.TELEGRAM_API_HASH;
@@ -370,6 +371,52 @@ export async function commentOnPost({ session, proxy, channel, postId, text }) {
       }
       throw e;
     }
+  });
+}
+
+/**
+ * Poll dialogs for the newest inbound DM per private chat (Нейрочат inbox).
+ * Only reports a dialog when its top message is inbound (msg.out === false) —
+ * if we (or the human owner, from the Telegram app itself) sent the last
+ * message, there is nothing new to react to.
+ */
+export async function fetchInbox({ session, proxy, limit = 30 }) {
+  return withClient(session, proxy, async (client) => {
+    const dialogs = await client.getDialogs({ limit });
+    const out = [];
+    for (const d of dialogs) {
+      if (!d.isUser) continue;
+      const entity = d.entity;
+      if (!entity || entity.bot || entity.self || entity.deleted) continue;
+      const msg = d.message;
+      if (!msg || !msg.message || msg.out) continue;
+      out.push({
+        peerTgId: String(entity.id),
+        peerAccessHash: entity.accessHash != null ? String(entity.accessHash) : null,
+        peerUsername: entity.username || null,
+        peerName: [entity.firstName, entity.lastName].filter(Boolean).join(" ") || null,
+        tgMessageId: String(msg.id),
+        text: msg.message,
+        postedAt: new Date((msg.date || 0) * 1000).toISOString(),
+      });
+    }
+    return { items: out };
+  });
+}
+
+/**
+ * Send a DM to a peer for the auto-responder. Prefers the access_hash cached
+ * from fetchInbox (works even for non-contacts with no username — a bare
+ * numeric id alone isn't resolvable via getEntity without one), falling back
+ * to a username lookup.
+ */
+export async function sendToPeer({ session, proxy, tgUserId, accessHash, username, text }) {
+  return withClient(session, proxy, async (client) => {
+    const entity = accessHash
+      ? new Api.InputPeerUser({ userId: bigInt(tgUserId), accessHash: bigInt(accessHash) })
+      : await client.getEntity(username || tgUserId);
+    const sent = await client.sendMessage(entity, { message: text });
+    return { ok: true, tgMessageId: String(sent.id) };
   });
 }
 

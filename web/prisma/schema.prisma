@@ -63,16 +63,22 @@ model TelegramAccount {
   systemPrompt String?
   dailyReplyLimit Int @default(20)
 
+  // DM auto-responder ("Нейрочат")
+  autoReplyEnabled    Boolean  @default(false)
+  autoReplyNextTickAt DateTime @default(now())
+
   lastCheckedAt DateTime?
   createdAt DateTime @default(now())
 
-  draftReplies DraftReply[]
-  campaignLogs CampaignLog[]
-  warmupPlan   WarmupPlan?
-  trackedLinks TrackedLink[]
+  draftReplies  DraftReply[]
+  campaignLogs  CampaignLog[]
+  warmupPlan    WarmupPlan?
+  trackedLinks  TrackedLink[]
+  conversations Conversation[]
 
   @@unique([userId, phone])
   @@index([userId])
+  @@index([autoReplyEnabled, autoReplyNextTickAt])
 }
 
 enum AccountStatus {
@@ -216,6 +222,50 @@ model Keyword {
   isActive Boolean @default(true)
 
   @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Нейрочат — DM conversations + AI auto-responder
+// ─────────────────────────────────────────────────────────────
+model Conversation {
+  id        String   @id @default(cuid())
+  accountId String
+  account   TelegramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  peerTgId       String
+  peerUsername   String?
+  peerName       String?
+  peerAccessHash String?
+
+  autoReply     Boolean  @default(true)
+  unread        Boolean  @default(true)
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  messages ChatMessage[]
+
+  @@unique([accountId, peerTgId])
+  @@index([accountId, lastMessageAt])
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  direction   MessageDirection
+  text        String
+  tgMessageId String?
+  aiGenerated Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@unique([conversationId, tgMessageId])
+  @@index([conversationId, createdAt])
+}
+
+enum MessageDirection {
+  IN
+  OUT
 }
 
 // ─────────────────────────────────────────────────────────────

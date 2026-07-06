@@ -66,9 +66,10 @@ async function pauseAccountCampaigns(accountId: string): Promise<void> {
 /** Count an account's successful outbound actions in the last 24h (for dailyReplyLimit). */
 export async function actionsLast24h(accountId: string): Promise<number> {
   const since = new Date(Date.now() - 24 * 3600_000);
-  const [campaigns, drafts] = await Promise.all([
+  const [campaigns, drafts, chats] = await Promise.all([
     prisma.campaignLog.count({ where: { accountId, ok: true, createdAt: { gte: since } } }),
     prisma.draftReply.count({ where: { accountId, status: "PUBLISHED", publishedAt: { gte: since } } }),
+    prisma.chatMessage.count({ where: { direction: "OUT", createdAt: { gte: since }, conversation: { accountId } } }),
   ]);
-  return campaigns + drafts;
+  return campaigns + drafts + chats;
 }

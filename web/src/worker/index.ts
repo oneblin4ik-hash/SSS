@@ -6,13 +6,14 @@
  *
  * It shares the same database and SESSION_ENCRYPTION_KEY as the web app, and
  * calls the telegram-service for every MTProto action. Each loop ticks all due
- * warm-up plans, campaigns, and auto-comment sources (their own nextTickAt
- * spacing enforces tempo).
+ * warm-up plans, campaigns, auto-comment sources, and DM auto-reply accounts
+ * (their own nextTickAt spacing enforces tempo).
  */
 import "dotenv/config";
 import { tickDueWarmupPlans } from "@/lib/engines/warmup";
 import { tickDueCampaigns } from "@/lib/engines/campaign";
 import { tickDueAutoComments } from "@/lib/engines/autocomment";
+import { tickDueAutoReplies } from "@/lib/engines/autoreply";
 
 const INTERVAL_MS = Number(process.env.WORKER_INTERVAL_MS) || 5000;
 
@@ -21,7 +22,8 @@ async function loop() {
     const w = await tickDueWarmupPlans();
     const c = await tickDueCampaigns();
     const a = await tickDueAutoComments();
-    if (w || c || a) console.log(`[worker] ticked warmups=${w} campaigns=${c} autocomments=${a}`);
+    const r = await tickDueAutoReplies();
+    if (w || c || a || r) console.log(`[worker] ticked warmups=${w} campaigns=${c} autocomments=${a} autoreplies=${r}`);
   } catch (e) {
     console.error("[worker] error", e);
   }

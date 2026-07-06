@@ -89,4 +89,14 @@ export const tg = {
     call<{ ok: boolean; verdict: "free" | "limited" | "unknown"; message: string }>("/tg/spam-status", input),
   comment: (input: { session: string; proxy?: ProxyInput; channel: string; postId: string; text: string }) =>
     call<{ ok: boolean; tgMessageId: string }>("/tg/comment", input),
+  inbox: (input: { session: string; proxy?: ProxyInput; limit?: number }) =>
+    call<{
+      items: {
+        peerTgId: string; peerAccessHash: string | null; peerUsername: string | null; peerName: string | null;
+        tgMessageId: string; text: string; postedAt: string;
+      }[];
+    }>("/tg/inbox", input),
+  sendToPeer: (input: {
+    session: string; proxy?: ProxyInput; tgUserId: string; accessHash?: string | null; username?: string | null; text: string;
+  }) => call<{ ok: boolean; tgMessageId: string }>("/tg/send-peer", input),
 };

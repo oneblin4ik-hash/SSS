@@ -14,6 +14,7 @@ import {
   Link2,
   BarChart3,
   Settings,
+  MessageCircle,
 } from "lucide-react";
 
 export type NavItem = {
@@ -33,6 +34,7 @@ export const NAV: NavItem[] = [
   { id: "warming", label: "Прогрев", href: "/warming", icon: Flame, section: "Аккаунты" },
   { id: "parsing", label: "Парсинг", href: "/parsing", icon: Database, section: "Привлечение" },
   { id: "monitoring", label: "Мониторинг", href: "/monitoring", icon: Radar, section: "Привлечение" },
+  { id: "neurochat", label: "Нейрочат", href: "/neurochat", icon: MessageCircle, section: "Привлечение" },
   { id: "queue", label: "Очередь", href: "/queue", icon: ListChecks, section: "Привлечение" },
   { id: "inviting", label: "Инвайтинг", href: "/inviting", icon: UserPlus, section: "Рассылки" },
   { id: "mailing", label: "Рассылка", href: "/mailing", icon: Send, section: "Рассылки" },

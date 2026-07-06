@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { UserPlus, Trash2, RefreshCw, AtSign, Phone } from "lucide-react";
+import { UserPlus, Trash2, RefreshCw, AtSign, Phone, ShieldCheck, Loader2 } from "lucide-react";
 import { Topbar } from "@/components/Topbar";
 import { StatusBadge, RiskBadge } from "@/components/ui/StatusBadge";
 import { AddAccountModal } from "./AddAccountModal";
@@ -26,6 +26,8 @@ export function AccountsClient() {
   const [proxies, setProxies] = useState<Proxy[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [checking, setChecking] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,6 +51,21 @@ export function AccountsClient() {
     if (!confirm("Отключить аккаунт? Сессия будет удалена.")) return;
     await fetch(`/api/accounts/${id}`, { method: "DELETE" });
     setAccounts((a) => a.filter((x) => x.id !== id));
+  }
+
+  async function checkHealth(id: string) {
+    setMsg(""); setChecking(id);
+    try {
+      const r = await fetch(`/api/accounts/${id}/health`, { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) setMsg(d.error || "Ошибка проверки");
+      else {
+        setMsg(d.verdict === "limited" ? "Аккаунт ограничен — поставлен на паузу" : "Аккаунт свободен");
+        await load();
+      }
+    } finally {
+      setChecking(null);
+    }
   }
 
   async function bindProxy(id: string, proxyId: string) {
@@ -79,6 +96,11 @@ export function AccountsClient() {
       />
 
       <div className="p-7 flex-1">
+        {msg && (
+          <div className="mb-4 text-sm text-accent bg-accent/10 border border-accent/30 rounded-btn px-3 py-2">
+            {msg}
+          </div>
+        )}
         {loading && accounts.length === 0 ? (
           <div className="text-text-dim text-sm">Загрузка…</div>
         ) : accounts.length === 0 ? (
@@ -159,7 +181,15 @@ export function AccountsClient() {
                     </td>
                     <td className="px-5 py-3.5 text-text-dim">{a.toneStyle}</td>
                     <td className="px-5 py-3.5 text-right num">{a.dailyReplyLimit}</td>
-                    <td className="px-5 py-3.5 text-right">
+                    <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                      <button
+                        className="btn ghost h-8 px-2"
+                        onClick={() => checkHealth(a.id)}
+                        disabled={checking === a.id}
+                        title="Проверить аккаунт (@SpamBot)"
+                      >
+                        {checking === a.id ? <Loader2 size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
+                      </button>
                       <button
                         className="btn ghost h-8 px-2 text-st-ban"
                         onClick={() => remove(a.id)}

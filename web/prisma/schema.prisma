@@ -1,0 +1,412 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// User + auth
+// ─────────────────────────────────────────────────────────────
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String
+  name           String?
+  targetChannel  String?
+  defaultTone    String   @default("Дружелюбный, по делу")
+  safetyMode     SafetyMode @default(BALANCED)
+  autoPauseOnRisk Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  accounts   TelegramAccount[]
+  proxies    Proxy[]
+  sources    MonitoredSource[]
+  keywords   Keyword[]
+  audiences  Audience[]
+  campaigns  Campaign[]
+  links      TrackedLink[]
+  warmupPlans WarmupPlan[]
+  contactTouches ContactTouch[]
+}
+
+enum SafetyMode {
+  CONSERVATIVE
+  BALANCED
+  AGGRESSIVE
+}
+
+// ─────────────────────────────────────────────────────────────
+// Telegram accounts + proxies
+// ─────────────────────────────────────────────────────────────
+model TelegramAccount {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phone     String
+  name      String?
+  username  String?
+  sessionEnc String?
+
+  proxyId   String?
+  proxy     Proxy?   @relation(fields: [proxyId], references: [id], onDelete: SetNull)
+
+  status    AccountStatus @default(CONNECTING)
+  riskLevel RiskLevel     @default(LOW)
+  lastRiskReason String?
+  floodUntil DateTime?
+
+  toneStyle String   @default("Дружелюбный, по делу")
+  systemPrompt String?
+  dailyReplyLimit Int @default(20)
+
+  lastCheckedAt DateTime?
+  createdAt DateTime @default(now())
+
+  draftReplies DraftReply[]
+  campaignLogs CampaignLog[]
+  warmupPlan   WarmupPlan?
+  trackedLinks TrackedLink[]
+
+  @@unique([userId, phone])
+  @@index([userId])
+}
+
+enum AccountStatus {
+  CONNECTING
+  ACTIVE
+  WARMING
+  PAUSED
+  ERROR
+  BANNED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Proxy {
+  id       String  @id @default(cuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type     ProxyType
+  host     String
+  port     Int
+  username String?
+  password String?
+  secret   String?
+  label    String?
+
+  accounts TelegramAccount[]
+
+  @@index([userId])
+}
+
+enum ProxyType {
+  SOCKS5
+  HTTP
+  MTPROTO
+}
+
+// ─────────────────────────────────────────────────────────────
+// Monitoring / parsing / found messages / drafts
+// ─────────────────────────────────────────────────────────────
+model MonitoredSource {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      SourceType
+  tgId      String?
+  title     String
+  username  String?
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  lastScanAt DateTime?
+
+  // Auto-neurocommenting (attract subscribers by commenting under fresh posts)
+  autoComment    Boolean  @default(false)
+  autoAccountIds String[]
+  autoDailyLimit Int      @default(10)
+  autoTone       String?
+  autoNextScanAt DateTime @default(now())
+
+  messages  FoundMessage[]
+
+  @@index([userId])
+  @@index([autoComment, autoNextScanAt])
+}
+
+enum SourceType {
+  CHANNEL
+  GROUP
+}
+
+model FoundMessage {
+  id        String   @id @default(cuid())
+  sourceId  String
+  source    MonitoredSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  tgChatId    String
+  tgMessageId String
+  authorName  String?
+  authorTgId  String?
+  authorUsername String?
+  text        String
+  postedAt    DateTime
+  matchedKeywords String[]
+  status      MessageStatus @default(NEW)
+  createdAt   DateTime @default(now())
+
+  drafts DraftReply[]
+
+  @@unique([tgChatId, tgMessageId])
+  @@index([sourceId])
+  @@index([status])
+}
+
+enum MessageStatus {
+  NEW
+  DRAFTED
+  SKIPPED
+}
+
+model DraftReply {
+  id        String   @id @default(cuid())
+  foundMessageId String
+  foundMessage   FoundMessage @relation(fields: [foundMessageId], references: [id], onDelete: Cascade)
+
+  accountId String
+  account   TelegramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  content       String
+  variants      String[]
+  editedContent String?
+  status        DraftStatus @default(PENDING)
+  aiModel       String?
+  createdAt     DateTime @default(now())
+  publishedAt   DateTime?
+  tgMessageId   String?
+
+  events AnalyticsEvent[]
+
+  @@index([status])
+  @@index([accountId])
+}
+
+enum DraftStatus {
+  PENDING
+  APPROVED
+  PUBLISHED
+  REJECTED
+  FAILED
+}
+
+model Keyword {
+  id       String  @id @default(cuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text     String
+  isActive Boolean @default(true)
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Audiences (for mailing / invite / story-view campaigns)
+// ─────────────────────────────────────────────────────────────
+model Audience {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name       String
+  sourceType String
+  sourceRef  String
+  count      Int      @default(0)
+  status     String   @default("READY")
+  createdAt  DateTime @default(now())
+
+  contacts   AudienceContact[]
+  campaigns  Campaign[]
+
+  @@index([userId])
+}
+
+model AudienceContact {
+  id         String   @id @default(cuid())
+  audienceId String
+  audience   Audience @relation(fields: [audienceId], references: [id], onDelete: Cascade)
+
+  tgUserId String
+  username String?
+  name     String?
+
+  @@index([audienceId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Campaigns (reactions / mailing / invite / story-view)
+// ─────────────────────────────────────────────────────────────
+model Campaign {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type     CampaignType
+  name     String
+  status   String   @default("DRAFT")
+
+  targets     String[]
+  emoji       String?
+  reactCount  Int      @default(3)
+
+  audienceId  String?
+  audience    Audience? @relation(fields: [audienceId], references: [id], onDelete: SetNull)
+  message     String?
+
+  accountIds     String[]
+  perAccountLimit Int     @default(30)
+
+  cursor    Int @default(0)
+  sentCount Int @default(0)
+  failCount Int @default(0)
+
+  pauseMinSec Int?
+  pauseMaxSec Int?
+
+  lastTickAt DateTime?
+  nextTickAt DateTime?
+  createdAt  DateTime @default(now())
+
+  logs CampaignLog[]
+
+  @@index([userId])
+  @@index([status, nextTickAt])
+}
+
+enum CampaignType {
+  REACTION
+  MAILING
+  INVITE
+  STORY_VIEW
+}
+
+model CampaignLog {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  accountId  String
+  account    TelegramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  target   String
+  action   String
+  ok       Boolean
+  detail   String?
+  createdAt DateTime @default(now())
+
+  @@index([campaignId])
+  @@index([accountId, ok, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Warm-up plans
+// ─────────────────────────────────────────────────────────────
+model WarmupPlan {
+  id        String   @id @default(cuid())
+  accountId String   @unique
+  account   TelegramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  currentDay    Int      @default(1)
+  totalDays     Int      @default(21)
+  actionsToday  Int      @default(0)
+  totalActions  Int      @default(0)
+  dayStartedAt  DateTime @default(now())
+  status        String   @default("RUNNING")
+  channels      String[]
+
+  lastTickAt DateTime?
+  nextTickAt DateTime?
+  createdAt  DateTime @default(now())
+
+  logs WarmupLog[]
+
+  @@index([userId])
+  @@index([status, nextTickAt])
+}
+
+model WarmupLog {
+  id      String   @id @default(cuid())
+  planId  String
+  plan    WarmupPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  action  String
+  target  String
+  ok      Boolean
+  detail  String?
+  createdAt DateTime @default(now())
+
+  @@index([planId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Analytics + tracked links
+// ─────────────────────────────────────────────────────────────
+model AnalyticsEvent {
+  id     String @id @default(cuid())
+  type   String
+
+  accountId String?
+  draftReplyId String?
+  draftReply DraftReply? @relation(fields: [draftReplyId], references: [id], onDelete: SetNull)
+  trackedLinkId String?
+  trackedLink TrackedLink? @relation(fields: [trackedLinkId], references: [id], onDelete: SetNull)
+
+  meta Json?
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([trackedLinkId])
+}
+
+model TrackedLink {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId String?
+  account   TelegramAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  slug      String   @unique
+  targetUrl String
+  label     String?
+  clicks    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  events    AnalyticsEvent[]
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Cross-campaign dedup — never DM/invite/story-view the same
+// Telegram user twice across all of a user's campaigns.
+// ─────────────────────────────────────────────────────────────
+model ContactTouch {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tgUserId String
+  action   String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tgUserId, action])
+}

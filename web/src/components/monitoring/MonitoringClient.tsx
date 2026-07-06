@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, RefreshCw, Radar, Search, Loader2, Sparkles } from "lucide-react";
+import { Plus, Trash2, RefreshCw, Radar, Search, Loader2, Sparkles, Bot, ChevronDown, ChevronUp, Zap } from "lucide-react";
 import { Topbar } from "@/components/Topbar";
 
 type Source = {
@@ -12,7 +12,12 @@ type Source = {
   isActive: boolean;
   lastScanAt: string | null;
   messageCount: number;
+  autoComment: boolean;
+  autoAccountIds: string[];
+  autoDailyLimit: number;
+  autoTone: string | null;
 };
+type Account = { id: string; name: string | null; phone: string };
 type Keyword = { id: string; text: string; isActive: boolean };
 type Message = {
   id: string;
@@ -43,10 +48,13 @@ export function MonitoringClient() {
   const [sources, setSources] = useState<Source[]>([]);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [scanning, setScanning] = useState<string | null>(null);
   const [drafting, setDrafting] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [ticking, setTicking] = useState<string | null>(null);
 
   const [type, setType] = useState("CHANNEL");
   const [handle, setHandle] = useState("");
@@ -55,10 +63,13 @@ export function MonitoringClient() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [s, k, m] = await Promise.all([jget("/api/sources"), jget("/api/keywords"), jget("/api/messages")]);
+      const [s, k, m, a] = await Promise.all([
+        jget("/api/sources"), jget("/api/keywords"), jget("/api/messages"), jget("/api/accounts"),
+      ]);
       setSources(Array.isArray(s) ? s : []);
       setKeywords(Array.isArray(k) ? k : []);
       setMessages(Array.isArray(m) ? m : []);
+      setAccounts(Array.isArray(a) ? a : []);
     } finally {
       setLoading(false);
     }
@@ -95,6 +106,28 @@ export function MonitoringClient() {
   async function removeSource(id: string) {
     await jsend(`/api/sources/${id}`, "DELETE");
     setSources((x) => x.filter((y) => y.id !== id));
+  }
+  async function patchAuto(s: Source, patch: Partial<Pick<Source, "autoComment" | "autoAccountIds" | "autoDailyLimit" | "autoTone">>) {
+    const updated = await jsend(`/api/sources/${s.id}`, "PATCH", patch);
+    setSources((x) => x.map((y) => (y.id === s.id ? { ...y, ...updated } : y)));
+  }
+  function toggleAutoAccount(s: Source, accountId: string) {
+    const next = s.autoAccountIds.includes(accountId)
+      ? s.autoAccountIds.filter((id) => id !== accountId)
+      : [...s.autoAccountIds, accountId];
+    patchAuto(s, { autoAccountIds: next });
+  }
+  async function tickAutoNow(id: string) {
+    setErr(""); setTicking(id);
+    try {
+      const r = await jsend(`/api/sources/${id}/autocomment`, "POST");
+      setErr(r.detail || "Тик выполнен");
+      await loadAll();
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setTicking(null);
+    }
   }
   async function addKeyword() {
     if (!kw.trim()) return;
@@ -148,27 +181,88 @@ export function MonitoringClient() {
           </div>
           <div className="flex flex-col gap-2">
             {sources.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 py-2 border-b border-line-soft last:border-0">
-                <div className="flex-1 min-w-0">
-                  <div className="text-text-bright font-medium truncate">{s.title}</div>
-                  <div className="text-xs text-text-faint">
-                    {s.messageCount} сообщ. · {s.lastScanAt ? `скан ${new Date(s.lastScanAt).toLocaleString("ru-RU")}` : "не сканировался"}
+              <div key={s.id} className="border-b border-line-soft last:border-0">
+                <div className="flex items-center gap-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-text-bright font-medium truncate">{s.title}</div>
+                    <div className="text-xs text-text-faint">
+                      {s.messageCount} сообщ. · {s.lastScanAt ? `скан ${new Date(s.lastScanAt).toLocaleString("ru-RU")}` : "не сканировался"}
+                      {s.autoComment && ` · авто-комменты вкл, лимит ${s.autoDailyLimit}/день`}
+                    </div>
                   </div>
+                  <button
+                    className={`badge ${s.autoComment ? "" : "opacity-50"}`}
+                    style={{ background: s.autoComment ? "var(--accent)22" : "var(--st-idle)22", color: s.autoComment ? "var(--accent)" : "var(--st-idle)" }}
+                    onClick={() => patchAuto(s, { autoComment: !s.autoComment })}
+                    title="Авто-нейрокомментинг"
+                  >
+                    <Bot size={12} className="inline mr-1" />
+                    {s.autoComment ? "авто вкл" : "авто выкл"}
+                  </button>
+                  <button
+                    className={`badge ${s.isActive ? "" : "opacity-60"}`}
+                    style={{ background: s.isActive ? "var(--st-live)22" : "var(--st-idle)22", color: s.isActive ? "var(--st-live)" : "var(--st-idle)" }}
+                    onClick={() => toggleSource(s)}
+                  >
+                    {s.isActive ? "активен" : "пауза"}
+                  </button>
+                  <button className="btn ghost h-8 px-2" onClick={() => scan(s.id)} disabled={scanning === s.id}>
+                    {scanning === s.id ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                    Скан
+                  </button>
+                  <button className="btn ghost h-8 px-2" onClick={() => setExpanded(expanded === s.id ? null : s.id)}>
+                    {expanded === s.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
+                  <button className="btn ghost h-8 px-2 text-st-ban" onClick={() => removeSource(s.id)}>
+                    <Trash2 size={14} />
+                  </button>
                 </div>
-                <button
-                  className={`badge ${s.isActive ? "" : "opacity-60"}`}
-                  style={{ background: s.isActive ? "var(--st-live)22" : "var(--st-idle)22", color: s.isActive ? "var(--st-live)" : "var(--st-idle)" }}
-                  onClick={() => toggleSource(s)}
-                >
-                  {s.isActive ? "активен" : "пауза"}
-                </button>
-                <button className="btn ghost h-8 px-2" onClick={() => scan(s.id)} disabled={scanning === s.id}>
-                  {scanning === s.id ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
-                  Скан
-                </button>
-                <button className="btn ghost h-8 px-2 text-st-ban" onClick={() => removeSource(s.id)}>
-                  <Trash2 size={14} />
-                </button>
+
+                {expanded === s.id && (
+                  <div className="bg-surface-2 rounded-lg p-4 mb-3 flex flex-col gap-3">
+                    <div>
+                      <label className="field-label">Аккаунты для авто-комментинга (пусто = все активные)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {accounts.length === 0 && <span className="text-xs text-text-faint">Нет аккаунтов.</span>}
+                        {accounts.map((a) => (
+                          <button
+                            key={a.id}
+                            onClick={() => toggleAutoAccount(s, a.id)}
+                            className={`text-xs px-2.5 h-7 rounded-full border transition-colors ${
+                              s.autoAccountIds.includes(a.id)
+                                ? "border-accent bg-accent/10 text-accent"
+                                : "border-line text-text-dim hover:text-text"
+                            }`}
+                          >
+                            {a.name || a.phone}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-4 items-end">
+                      <div>
+                        <label className="field-label">Лимит комментариев/день</label>
+                        <input
+                          type="number" min={1} max={100} className="inp w-28"
+                          value={s.autoDailyLimit}
+                          onChange={(e) => patchAuto(s, { autoDailyLimit: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="field-label">Тон комментариев (необязательно)</label>
+                        <input
+                          className="inp" value={s.autoTone ?? ""}
+                          onChange={(e) => patchAuto(s, { autoTone: e.target.value || null })}
+                          placeholder="Использовать тон аккаунта по умолчанию"
+                        />
+                      </div>
+                      <button className="btn secondary h-9" onClick={() => tickAutoNow(s.id)} disabled={ticking === s.id}>
+                        {ticking === s.id ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                        Тик сейчас
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -13,5 +13,5 @@ database_name = "propotok-demo"
 database_id = "79d7393d-82ff-4b06-896d-17a1ecbfa1c0"
 
 [vars]
-NEXT_PUBLIC_APP_URL = "https://propotok-demo.workers.dev"
+NEXT_PUBLIC_APP_URL = "https://propotok-demo.one-blin4ik.workers.dev"
 DEMO_MODE = "true"

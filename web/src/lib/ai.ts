@@ -140,6 +140,71 @@ export async function draftComment(input: {
   }
 }
 
+/**
+ * Generate the next reply in a DM conversation for the auto-responder
+ * ("Нейрочат"). Unlike auto-neurocommenting, there's no relevance gate here —
+ * the peer messaged us first, so replying is the expected behaviour; the
+ * account-level daily limit is the safety valve, enforced by the caller.
+ */
+export async function draftChatReply(input: {
+  history: { role: "user" | "assistant"; text: string }[];
+  peerName?: string | null;
+  tone: string;
+  targetChannel?: string | null;
+  extraGuidance?: string | null;
+}): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY не задан. Добавьте ключ в настройках сервера.");
+
+  const client = new Anthropic({ apiKey });
+
+  const system = [
+    "Ты — живой человек, отвечающий в личных сообщениях Telegram от лица владельца аккаунта.",
+    input.peerName ? `Собеседника зовут ${input.peerName}.` : "",
+    `Тон: ${input.tone}.`,
+    input.targetChannel
+      ? `Если уместно и собеседник сам к этому подводит, можно мягко направить его к каналу ${input.targetChannel}, без навязчивости и спама.`
+      : "",
+    input.extraGuidance || "",
+    "Правила: 1–3 предложения, по-русски, по существу вопроса собеседника, звучит как живой человек,",
+    "без хэштегов и эмодзи-спама, не выдумывай факты о себе.",
+    "Верни ТОЛЬКО текст ответа — без кавычек и пояснений.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const resp = await client.messages.create({
+    model: "claude-opus-4-8",
+    max_tokens: 500,
+    system,
+    messages: collapseAlternating(input.history).map((h) => ({ role: h.role, content: h.text })),
+  });
+
+  return resp.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("\n")
+    .trim()
+    .replace(/^"|"$/g, "");
+}
+
+/**
+ * The Anthropic Messages API requires strictly alternating user/assistant
+ * roles. Our stored history normally alternates already, but a message sent
+ * manually from the Telegram app itself (outside this system) can leave two
+ * inbound messages back to back — merge consecutive same-role turns so the
+ * request stays valid instead of erroring.
+ */
+function collapseAlternating<T extends { role: "user" | "assistant"; text: string }>(history: T[]) {
+  const out: { role: "user" | "assistant"; text: string }[] = [];
+  for (const h of history) {
+    const prev = out[out.length - 1];
+    if (prev && prev.role === h.role) prev.text += "\n" + h.text;
+    else out.push({ role: h.role, text: h.text });
+  }
+  return out;
+}
+
 /** Best-effort parse of the model output into up to 3 variant strings. */
 function parseVariants(text: string): string[] {
   const cleaned = text.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();

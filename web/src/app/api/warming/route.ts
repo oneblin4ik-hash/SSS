@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { toJsonArray } from "@/lib/jsonArray";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const plans = await prisma.warmupPlan.findMany({
     where: { userId: user.id },
@@ -14,7 +16,7 @@ export async function GET() {
     include: { account: { select: { name: true, phone: true, username: true } } },
   });
   return NextResponse.json(
-    plans.map((p) => ({
+    plans.map((p: (typeof plans)[number]) => ({
       id: p.id,
       accountId: p.accountId,
       account: p.account,
@@ -34,7 +36,8 @@ const Body = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "accountId обязателен" }, { status: 400 });
@@ -50,7 +53,7 @@ export async function POST(req: NextRequest) {
       accountId: account.id,
       userId: user.id,
       totalDays: parsed.data.totalDays ?? 21,
-      channels: parsed.data.channels ?? [],
+      channels: toJsonArray(parsed.data.channels ?? []),
       nextTickAt: new Date(),
     },
   });

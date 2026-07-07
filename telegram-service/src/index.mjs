@@ -15,6 +15,7 @@ import {
   importSession, checkProxy, parseMembers, parseCommenters,
   joinChat, readChat, reactRecent, sendDirect,
   inviteToChannel, viewStories, checkSpamStatus, classifyError, commentOnPost,
+  fetchInbox, sendToPeer,
 } from "./telegram.mjs";
 
 const proxySchema = z
@@ -134,6 +135,21 @@ app.post("/tg/comment", handler(
     text: z.string().min(1).max(4096),
   }),
   (d) => commentOnPost(d)
+));
+
+app.post("/tg/inbox", handler(
+  z.object({ ...withSession.shape, limit: z.number().optional() }),
+  (d) => fetchInbox(d)
+));
+app.post("/tg/send-peer", handler(
+  z.object({
+    ...withSession.shape,
+    tgUserId: z.string().min(1),
+    accessHash: z.string().optional().nullable(),
+    username: z.string().optional().nullable(),
+    text: z.string().min(1).max(4096),
+  }),
+  (d) => sendToPeer(d)
 ));
 
 app.listen(PORT, () => console.log(`✓ Pro Potok telegram-service on :${PORT}`));

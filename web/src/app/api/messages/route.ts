@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { fromJsonArray } from "@/lib/jsonArray";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const messages = await prisma.foundMessage.findMany({
@@ -15,12 +17,12 @@ export async function GET() {
     include: { source: { select: { title: true, username: true } } },
   });
   return NextResponse.json(
-    messages.map((m) => ({
+    messages.map((m: (typeof messages)[number]) => ({
       id: m.id,
       text: m.text,
       authorName: m.authorName,
       authorUsername: m.authorUsername,
-      matchedKeywords: m.matchedKeywords,
+      matchedKeywords: fromJsonArray(m.matchedKeywords),
       status: m.status,
       postedAt: m.postedAt,
       source: m.source,

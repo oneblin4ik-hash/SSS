@@ -1,16 +1,21 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
-import { prisma } from "./prisma";
+import type { PrismaClient } from "@prisma/client";
 
 const COOKIE = "pp_session";
+
+// Workers CPU time is capped per request; bcrypt's cost factor is exponential,
+// so this trades a little hash strength for staying comfortably under that
+// limit (cost 10 risked exceeding it on the platform's CPU limits).
+const BCRYPT_COST = 8;
 
 function secret() {
   return new TextEncoder().encode(process.env.AUTH_SECRET || "");
 }
 
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
+  return bcrypt.hash(password, BCRYPT_COST);
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
@@ -38,7 +43,7 @@ export async function clearSession() {
   jar.delete(COOKIE);
 }
 
-export async function getAuthUser() {
+export async function getAuthUser(prisma: PrismaClient) {
   const jar = await cookies();
   const token = jar.get(COOKIE)?.value;
   if (!token) return null;

@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/prisma";
-import { decrypt } from "@/lib/crypto";
+import type { PrismaClient } from "@prisma/client";
 import { proxyToInput } from "@/lib/telegram/account";
 import { tg } from "@/lib/telegram/service";
+import { toJsonArray } from "@/lib/jsonArray";
 
 /**
  * Scan a MonitoredSource for fresh posts and persist any not already seen.
@@ -9,6 +9,7 @@ import { tg } from "@/lib/telegram/service";
  * scan+dedup logic (keyed on [tgChatId,tgMessageId]) exists in exactly one place.
  */
 export async function scanSource(
+  prisma: PrismaClient,
   sourceId: string,
   opts: { session: string; proxy: ReturnType<typeof proxyToInput>; keywords?: string[]; sinceHours?: number; limit?: number }
 ): Promise<{ scanned: number; fresh: number; chatId: string; title: string }> {
@@ -30,24 +31,28 @@ export async function scanSource(
     where: { tgChatId: scan.chatId, tgMessageId: { in: ids } },
     select: { tgMessageId: true },
   });
-  const seen = new Set(existing.map((e) => e.tgMessageId));
+  const seen = new Set(existing.map((e: { tgMessageId: string }) => e.tgMessageId));
   const fresh = scan.messages.filter((m) => !seen.has(m.tgMessageId));
 
-  if (fresh.length) {
-    await prisma.foundMessage.createMany({
-      data: fresh.map((m) => ({
-        sourceId,
-        tgChatId: m.tgChatId,
-        tgMessageId: m.tgMessageId,
-        text: m.text,
-        postedAt: new Date(m.postedAt),
-        matchedKeywords: m.matchedKeywords,
-        authorName: m.authorName,
-        authorUsername: m.authorUsername,
-        authorTgId: m.authorTgId,
-      })),
-      skipDuplicates: true,
-    });
+  // D1/SQLite's createMany has no skipDuplicates support (unlike Postgres) —
+  // insert one at a time and swallow unique-constraint hits (a concurrent
+  // tick may have inserted the same [tgChatId,tgMessageId] in the meantime).
+  for (const m of fresh) {
+    await prisma.foundMessage
+      .create({
+        data: {
+          sourceId,
+          tgChatId: m.tgChatId,
+          tgMessageId: m.tgMessageId,
+          text: m.text,
+          postedAt: new Date(m.postedAt),
+          matchedKeywords: toJsonArray(m.matchedKeywords),
+          authorName: m.authorName,
+          authorUsername: m.authorUsername,
+          authorTgId: m.authorTgId,
+        },
+      })
+      .catch(() => {});
   }
 
   await prisma.monitoredSource.update({

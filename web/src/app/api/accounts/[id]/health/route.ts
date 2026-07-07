@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { decrypt } from "@/lib/crypto";
 import { tg, TgError } from "@/lib/telegram/service";
@@ -9,7 +9,8 @@ export const runtime = "nodejs";
 
 /** Live account health check: session validity + @SpamBot verdict → risk/status. */
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const { id } = await params;
 

@@ -1,10 +1,11 @@
-import { prisma } from "@/lib/prisma";
+import type { PrismaClient } from "@prisma/client";
 import { decrypt } from "@/lib/crypto";
 import { proxyToInput } from "@/lib/telegram/account";
 import { tg, TgError } from "@/lib/telegram/service";
 import { draftComment } from "@/lib/ai";
 import { applyErrorOutcome, actionsLast24h } from "./health";
 import { scanSource } from "./scan";
+import { fromJsonArray } from "@/lib/jsonArray";
 import {
   autoCommentDailyCap, commentPause, RELEVANCE_MIN, CONFIDENCE_MIN, type Mode,
 } from "./limits";
@@ -20,7 +21,7 @@ function startOfDay(): Date {
  * un-commented post, run the relevance gate, and (if it passes) comment under
  * it from a rotating account. Reuses the campaign/health safety machinery.
  */
-export async function tickAutoCommentSource(sourceId: string): Promise<{
+export async function tickAutoCommentSource(prisma: PrismaClient, sourceId: string): Promise<{
   ok: boolean;
   detail: string;
 }> {
@@ -47,7 +48,7 @@ export async function tickAutoCommentSource(sourceId: string): Promise<{
     return { ok: true, detail: `дневной лимит источника (${cap}) исчерпан` };
   }
 
-  const account = await pickAccount(source.userId, source.autoAccountIds);
+  const account = await pickAccount(prisma, source.userId, fromJsonArray(source.autoAccountIds));
   if (!account) {
     await reschedule(600);
     return { ok: false, detail: "нет доступного аккаунта" };
@@ -62,13 +63,13 @@ export async function tickAutoCommentSource(sourceId: string): Promise<{
 
   const keywords = (
     await prisma.keyword.findMany({ where: { userId: source.userId, isActive: true } })
-  ).map((k) => k.text);
+  ).map((k: { text: string }) => k.text);
 
   try {
-    await scanSource(sourceId, { session, proxy, keywords: [], sinceHours: 24, limit: 30 });
+    await scanSource(prisma, sourceId, { session, proxy, keywords: [], sinceHours: 24, limit: 30 });
   } catch (e: any) {
     if (e instanceof TgError && ["FLOOD_WAIT", "AUTH_DEAD"].includes(e.code)) {
-      await applyErrorOutcome({ accountId: account.id, code: e.code, retryAfter: e.retryAfter, autoPauseOnRisk: source.user.autoPauseOnRisk });
+      await applyErrorOutcome(prisma, { accountId: account.id, code: e.code, retryAfter: e.retryAfter, autoPauseOnRisk: source.user.autoPauseOnRisk });
     }
     await reschedule(600);
     return { ok: false, detail: `скан: ${e?.message || "ошибка"}` };
@@ -145,7 +146,7 @@ export async function tickAutoCommentSource(sourceId: string): Promise<{
     await prisma.draftReply.update({ where: { id: draft.id }, data: { status: "FAILED" } });
     if (e instanceof TgError) {
       if (["PEER_FLOOD", "FLOOD_WAIT", "AUTH_DEAD"].includes(e.code)) {
-        await applyErrorOutcome({ accountId: account.id, code: e.code, retryAfter: e.retryAfter, autoPauseOnRisk: source.user.autoPauseOnRisk });
+        await applyErrorOutcome(prisma, { accountId: account.id, code: e.code, retryAfter: e.retryAfter, autoPauseOnRisk: source.user.autoPauseOnRisk });
       }
       if (["NO_COMMENTS", "CANT_WRITE", "SLOWMODE"].includes(e.code)) {
         await prisma.foundMessage.update({ where: { id: post.id }, data: { status: "SKIPPED" } }).catch(() => {});
@@ -157,7 +158,7 @@ export async function tickAutoCommentSource(sourceId: string): Promise<{
 }
 
 /** Choose a rotating eligible account (ACTIVE/WARMING, not flooded, under daily limit). */
-async function pickAccount(userId: string, accountIds: string[]) {
+async function pickAccount(prisma: PrismaClient, userId: string, accountIds: string[]) {
   const accounts = await prisma.telegramAccount.findMany({
     where: {
       userId,
@@ -170,14 +171,14 @@ async function pickAccount(userId: string, accountIds: string[]) {
   });
   for (const a of accounts) {
     if (a.floodUntil && a.floodUntil.getTime() > Date.now()) continue;
-    if ((await actionsLast24h(a.id)) >= a.dailyReplyLimit) continue;
+    if ((await actionsLast24h(prisma, a.id)) >= a.dailyReplyLimit) continue;
     return a;
   }
   return null;
 }
 
 /** Worker entrypoint: tick all due auto-comment sources. */
-export async function tickDueAutoComments(limit = 10): Promise<number> {
+export async function tickDueAutoComments(prisma: PrismaClient, limit = 10): Promise<number> {
   const due = await prisma.monitoredSource.findMany({
     where: { autoComment: true, isActive: true, autoNextScanAt: { lte: new Date() } },
     select: { id: true },
@@ -185,7 +186,7 @@ export async function tickDueAutoComments(limit = 10): Promise<number> {
   });
   let n = 0;
   for (const s of due) {
-    await tickAutoCommentSource(s.id).catch(() => {});
+    await tickAutoCommentSource(prisma, s.id).catch(() => {});
     n++;
   }
   return n;

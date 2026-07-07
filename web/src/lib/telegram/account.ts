@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import type { PrismaClient } from "@prisma/client";
 import { decrypt } from "@/lib/crypto";
 import type { ProxyInput } from "./service";
 
@@ -26,6 +26,7 @@ export function proxyToInput(p: {
  * the GramJS-ready proxy (if one is bound). Optionally target a specific id.
  */
 export async function getAccountSession(
+  prisma: PrismaClient,
   userId: string,
   accountId?: string
 ): Promise<{ accountId: string; session: string; proxy: ProxyInput } | null> {

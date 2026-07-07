@@ -35,3 +35,14 @@ export function commentPause(mode: Mode): number {
 /** Relevance double-gate thresholds. */
 export const RELEVANCE_MIN = 70;
 export const CONFIDENCE_MIN = 60;
+
+/**
+ * Seconds between inbox polls for the DM auto-responder. Short and mode-light
+ * on purpose: this is reading + replying to someone who messaged us first,
+ * not unsolicited outreach — the ban-risk profile is much lower than
+ * campaigns/warmup, so responsiveness matters more than tempo jitter.
+ */
+export function autoReplyPoll(mode: Mode): number {
+  const base = { CONSERVATIVE: [45, 90], BALANCED: [20, 50], AGGRESSIVE: [10, 30] }[mode];
+  return randInt(base[0], base[1]);
+}

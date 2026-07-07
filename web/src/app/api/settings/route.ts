@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   return NextResponse.json({
     email: user.email,
@@ -27,7 +28,8 @@ const Patch = z.object({
 });
 
 export async function PATCH(req: NextRequest) {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const parsed = Patch.safeParse(await req.json().catch(() => null));

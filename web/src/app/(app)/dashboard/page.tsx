@@ -1,11 +1,12 @@
 import { Topbar } from "@/components/Topbar";
 import { getAuthUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   const [accounts, sources, drafts, campaigns] = await Promise.all([
     prisma.telegramAccount.count({ where: { userId: user!.id } }),
     prisma.monitoredSource.count({ where: { userId: user!.id } }),

@@ -6,11 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "worker": "tsx src/worker/index.ts",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
+    "@opennextjs/cloudflare": "^1.20.1",
+    "@prisma/adapter-d1": "^6.19.3",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^2.4.3",
     "jose": "^5.9.6",
@@ -21,6 +25,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260702.1",
     "@tailwindcss/postcss": "^4.3.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.9.0",
@@ -32,6 +37,7 @@
     "prisma": "^6.19.3",
     "tailwindcss": "^4.3.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "wrangler": "^4.107.0"
   }
 }

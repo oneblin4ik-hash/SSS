@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { tg } from "@/lib/telegram/service";
 import { getAuthUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 import { proxyToInput } from "@/lib/telegram/account";
 
 export const runtime = "nodejs";
@@ -10,7 +10,8 @@ export const runtime = "nodejs";
 const Body = z.object({ phone: z.string().min(5), proxyId: z.string().optional() });
 
 export async function POST(req: NextRequest) {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const parsed = Body.safeParse(await req.json().catch(() => null));

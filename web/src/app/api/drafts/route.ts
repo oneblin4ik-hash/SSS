@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { fromJsonArray } from "@/lib/jsonArray";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const drafts = await prisma.draftReply.findMany({
@@ -27,10 +29,10 @@ export async function GET() {
   });
 
   return NextResponse.json(
-    drafts.map((d) => ({
+    drafts.map((d: (typeof drafts)[number]) => ({
       id: d.id,
       content: d.editedContent ?? d.content,
-      variants: d.variants,
+      variants: fromJsonArray(d.variants),
       status: d.status,
       createdAt: d.createdAt,
       account: d.account,

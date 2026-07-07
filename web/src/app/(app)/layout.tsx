@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth";
+import { getDb } from "@/lib/prisma";
 import { Sidebar } from "@/components/Sidebar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await getAuthUser();
+  const user = await getAuthUser(getDb());
   if (!user) redirect("/login");
 
   return (

@@ -1,13 +1,14 @@
 import { Topbar } from "@/components/Topbar";
 import { getAuthUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   const [replies, clicks, warmups, campaigns] = await Promise.all([
-    prisma.analyticsEvent.count({ where: { type: "REPLY_PUBLISHED", accountId: { in: (await prisma.telegramAccount.findMany({ where: { userId: user!.id }, select: { id: true } })).map((a) => a.id) } } }),
+    prisma.analyticsEvent.count({ where: { type: "REPLY_PUBLISHED", accountId: { in: (await prisma.telegramAccount.findMany({ where: { userId: user!.id }, select: { id: true } })).map((a: { id: string }) => a.id) } } }),
     prisma.analyticsEvent.count({ where: { type: "LINK_CLICK", trackedLink: { userId: user!.id } } }),
     prisma.warmupPlan.count({ where: { userId: user!.id, status: "RUNNING" } }),
     prisma.campaign.count({ where: { userId: user!.id } }),

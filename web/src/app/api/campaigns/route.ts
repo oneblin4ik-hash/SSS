@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { toJsonArray, fromJsonArray } from "@/lib/jsonArray";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const type = req.nextUrl.searchParams.get("type");
 
@@ -17,24 +19,27 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json(
-    campaigns.map((c) => ({
-      id: c.id,
-      type: c.type,
-      name: c.name,
-      status: c.status,
-      targets: c.targets,
-      emoji: c.emoji,
-      reactCount: c.reactCount,
-      audience: c.audience,
-      message: c.message,
-      accountIds: c.accountIds,
-      perAccountLimit: c.perAccountLimit,
-      cursor: c.cursor,
-      sentCount: c.sentCount,
-      failCount: c.failCount,
-      total: c.type === "REACTION" ? c.targets.length : c.audience?.count ?? 0,
-      lastTickAt: c.lastTickAt,
-    }))
+    campaigns.map((c: (typeof campaigns)[number]) => {
+      const targets = fromJsonArray(c.targets);
+      return {
+        id: c.id,
+        type: c.type,
+        name: c.name,
+        status: c.status,
+        targets,
+        emoji: c.emoji,
+        reactCount: c.reactCount,
+        audience: c.audience,
+        message: c.message,
+        accountIds: fromJsonArray(c.accountIds),
+        perAccountLimit: c.perAccountLimit,
+        cursor: c.cursor,
+        sentCount: c.sentCount,
+        failCount: c.failCount,
+        total: c.type === "REACTION" ? targets.length : c.audience?.count ?? 0,
+        lastTickAt: c.lastTickAt,
+      };
+    })
   );
 }
 
@@ -51,7 +56,8 @@ const Body = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
@@ -89,9 +95,9 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       type: d.type,
       name: d.name,
-      accountIds: d.accountIds,
+      accountIds: toJsonArray(d.accountIds),
       perAccountLimit: d.perAccountLimit ?? 30,
-      targets: d.targets ?? [],
+      targets: toJsonArray(d.targets ?? []),
       emoji: d.emoji || null,
       reactCount: d.reactCount ?? 3,
       audienceId: d.audienceId || null,

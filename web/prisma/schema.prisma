@@ -1,9 +1,10 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -63,16 +64,22 @@ model TelegramAccount {
   systemPrompt String?
   dailyReplyLimit Int @default(20)
 
+  // DM auto-responder ("Нейрочат")
+  autoReplyEnabled    Boolean  @default(false)
+  autoReplyNextTickAt DateTime @default(now())
+
   lastCheckedAt DateTime?
   createdAt DateTime @default(now())
 
-  draftReplies DraftReply[]
-  campaignLogs CampaignLog[]
-  warmupPlan   WarmupPlan?
-  trackedLinks TrackedLink[]
+  draftReplies  DraftReply[]
+  campaignLogs  CampaignLog[]
+  warmupPlan    WarmupPlan?
+  trackedLinks  TrackedLink[]
+  conversations Conversation[]
 
   @@unique([userId, phone])
   @@index([userId])
+  @@index([autoReplyEnabled, autoReplyNextTickAt])
 }
 
 enum AccountStatus {
@@ -132,7 +139,7 @@ model MonitoredSource {
 
   // Auto-neurocommenting (attract subscribers by commenting under fresh posts)
   autoComment    Boolean  @default(false)
-  autoAccountIds String[]
+  autoAccountIds String   @default("[]") // JSON string[] (SQLite/D1 has no native array type — see lib/jsonArray.ts)
   autoDailyLimit Int      @default(10)
   autoTone       String?
   autoNextScanAt DateTime @default(now())
@@ -160,7 +167,7 @@ model FoundMessage {
   authorUsername String?
   text        String
   postedAt    DateTime
-  matchedKeywords String[]
+  matchedKeywords String @default("[]") // JSON string[]
   status      MessageStatus @default(NEW)
   createdAt   DateTime @default(now())
 
@@ -186,7 +193,7 @@ model DraftReply {
   account   TelegramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   content       String
-  variants      String[]
+  variants      String  @default("[]") // JSON string[]
   editedContent String?
   status        DraftStatus @default(PENDING)
   aiModel       String?
@@ -216,6 +223,50 @@ model Keyword {
   isActive Boolean @default(true)
 
   @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Нейрочат — DM conversations + AI auto-responder
+// ─────────────────────────────────────────────────────────────
+model Conversation {
+  id        String   @id @default(cuid())
+  accountId String
+  account   TelegramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  peerTgId       String
+  peerUsername   String?
+  peerName       String?
+  peerAccessHash String?
+
+  autoReply     Boolean  @default(true)
+  unread        Boolean  @default(true)
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  messages ChatMessage[]
+
+  @@unique([accountId, peerTgId])
+  @@index([accountId, lastMessageAt])
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  direction   MessageDirection
+  text        String
+  tgMessageId String?
+  aiGenerated Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@unique([conversationId, tgMessageId])
+  @@index([conversationId, createdAt])
+}
+
+enum MessageDirection {
+  IN
+  OUT
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -263,7 +314,7 @@ model Campaign {
   name     String
   status   String   @default("DRAFT")
 
-  targets     String[]
+  targets     String   @default("[]") // JSON string[]
   emoji       String?
   reactCount  Int      @default(3)
 
@@ -271,7 +322,7 @@ model Campaign {
   audience    Audience? @relation(fields: [audienceId], references: [id], onDelete: SetNull)
   message     String?
 
-  accountIds     String[]
+  accountIds     String  @default("[]") // JSON string[]
   perAccountLimit Int     @default(30)
 
   cursor    Int @default(0)
@@ -332,7 +383,7 @@ model WarmupPlan {
   totalActions  Int      @default(0)
   dayStartedAt  DateTime @default(now())
   status        String   @default("RUNNING")
-  channels      String[]
+  channels      String   @default("[]") // JSON string[]
 
   lastTickAt DateTime?
   nextTickAt DateTime?

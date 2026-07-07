@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
 /** Public redirect: /r/:slug → target, counting the click for traffic analytics. */
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const prisma = getDb();
   const { slug } = await params;
   const link = await prisma.trackedLink.findUnique({ where: { slug } });
   if (!link) {

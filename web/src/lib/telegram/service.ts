@@ -1,5 +1,8 @@
+import { demoTg } from "./demo";
+
 const BASE = process.env.TELEGRAM_SERVICE_URL || "http://localhost:4000";
 const SECRET = process.env.INTERNAL_SECRET || "";
+const DEMO_MODE = process.env.DEMO_MODE === "true";
 
 export type ProxyInput = {
   type?: "SOCKS5" | "HTTP" | "MTPROTO";
@@ -40,7 +43,7 @@ async function call<T>(path: string, body: unknown): Promise<T> {
   return data as T;
 }
 
-export const tg = {
+const realTg = {
   requestCode: (phone: string, proxy?: ProxyInput) =>
     call<{ phoneCodeHash: string }>("/tg/request-code", { phone, proxy }),
   signInWithCode: (phone: string, code: string) =>
@@ -100,3 +103,5 @@ export const tg = {
     session: string; proxy?: ProxyInput; tgUserId: string; accessHash?: string | null; username?: string | null; text: string;
   }) => call<{ ok: boolean; tgMessageId: string }>("/tg/send-peer", input),
 };
+
+export const tg: typeof realTg = DEMO_MODE ? (demoTg as unknown as typeof realTg) : realTg;

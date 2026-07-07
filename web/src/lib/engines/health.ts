@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import type { PrismaClient } from "@prisma/client";
 
 /**
  * React to a telegram-service error code for one account — the enforcement half
@@ -11,12 +11,15 @@ import { prisma } from "@/lib/prisma";
  *    signal — do NOT reintroduce a LOW→MEDIUM→HIGH escalation here.
  *  - AUTH_DEAD   → account ERROR (session invalid / revoked)
  */
-export async function applyErrorOutcome(opts: {
-  accountId: string;
-  code: string;
-  retryAfter?: number;
-  autoPauseOnRisk: boolean;
-}): Promise<void> {
+export async function applyErrorOutcome(
+  prisma: PrismaClient,
+  opts: {
+    accountId: string;
+    code: string;
+    retryAfter?: number;
+    autoPauseOnRisk: boolean;
+  }
+): Promise<void> {
   const { accountId, code, retryAfter = 0, autoPauseOnRisk } = opts;
 
   if (code === "FLOOD_WAIT") {
@@ -33,7 +36,7 @@ export async function applyErrorOutcome(opts: {
       where: { id: accountId },
       data: { status: "ERROR", riskLevel: "HIGH", lastRiskReason: "Сессия недействительна" },
     });
-    await pauseAccountCampaigns(accountId);
+    await pauseAccountCampaigns(prisma, accountId);
     return;
   }
 
@@ -47,14 +50,16 @@ export async function applyErrorOutcome(opts: {
         ...(autoPauseOnRisk ? { status: "PAUSED" } : {}),
       },
     });
-    if (autoPauseOnRisk) await pauseAccountCampaigns(accountId);
+    if (autoPauseOnRisk) await pauseAccountCampaigns(prisma, accountId);
   }
 }
 
 /** Pause every RUNNING campaign/warmup plan that uses this account. */
-async function pauseAccountCampaigns(accountId: string): Promise<void> {
+async function pauseAccountCampaigns(prisma: PrismaClient, accountId: string): Promise<void> {
   await prisma.campaign.updateMany({
-    where: { status: "RUNNING", accountIds: { has: accountId } },
+    // accountIds is a JSON-encoded string[] (D1/SQLite has no array column type) —
+    // match the quoted id to avoid false positives from partial id prefixes.
+    where: { status: "RUNNING", accountIds: { contains: `"${accountId}"` } },
     data: { status: "PAUSED" },
   });
   await prisma.warmupPlan.updateMany({
@@ -64,7 +69,7 @@ async function pauseAccountCampaigns(accountId: string): Promise<void> {
 }
 
 /** Count an account's successful outbound actions in the last 24h (for dailyReplyLimit). */
-export async function actionsLast24h(accountId: string): Promise<number> {
+export async function actionsLast24h(prisma: PrismaClient, accountId: string): Promise<number> {
   const since = new Date(Date.now() - 24 * 3600_000);
   const [campaigns, drafts, chats] = await Promise.all([
     prisma.campaignLog.count({ where: { accountId, ok: true, createdAt: { gte: since } } }),

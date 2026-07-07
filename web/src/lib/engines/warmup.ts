@@ -1,16 +1,17 @@
-import { prisma } from "@/lib/prisma";
+import type { PrismaClient } from "@prisma/client";
 import { decrypt } from "@/lib/crypto";
 import { proxyToInput } from "@/lib/telegram/account";
 import { tg, TgError } from "@/lib/telegram/service";
 import { warmupDailyTarget, pauseRange, randInt, WARMUP_POOL, type Mode } from "./limits";
 import { applyErrorOutcome } from "./health";
+import { fromJsonArray } from "@/lib/jsonArray";
 
 /**
  * Run one warm-up action for a single plan (join / react / read).
  * Advances actionsToday, rolls the day over at the daily target,
  * finishes the plan at totalDays. Returns a short status for the caller.
  */
-export async function tickWarmupPlan(planId: string): Promise<{ ok: boolean; detail: string; day: number; actionsToday: number }> {
+export async function tickWarmupPlan(prisma: PrismaClient, planId: string): Promise<{ ok: boolean; detail: string; day: number; actionsToday: number }> {
   const plan = await prisma.warmupPlan.findUnique({
     where: { id: planId },
     include: { account: { include: { proxy: true } }, user: true },
@@ -53,7 +54,8 @@ export async function tickWarmupPlan(planId: string): Promise<{ ok: boolean; det
 
   const session = await decrypt(plan.account.sessionEnc);
   const proxy = proxyToInput(plan.account.proxy);
-  const pool = plan.channels.length ? plan.channels : WARMUP_POOL;
+  const channels = fromJsonArray(plan.channels);
+  const pool = channels.length ? channels : WARMUP_POOL;
   const target0 = pool[randInt(0, pool.length - 1)];
 
   const roll = Math.random();
@@ -80,7 +82,7 @@ export async function tickWarmupPlan(planId: string): Promise<{ ok: boolean; det
     ok = false;
     detail = e?.message || "ошибка действия";
     if (e instanceof TgError) {
-      await applyErrorOutcome({
+      await applyErrorOutcome(prisma, {
         accountId: plan.accountId,
         code: e.code,
         retryAfter: e.retryAfter,
@@ -110,7 +112,7 @@ export async function tickWarmupPlan(planId: string): Promise<{ ok: boolean; det
   return { ok, detail, day: plan.currentDay, actionsToday: plan.actionsToday + (ok ? 1 : 0) };
 }
 
-export async function tickDueWarmupPlans(limit = 20): Promise<number> {
+export async function tickDueWarmupPlans(prisma: PrismaClient, limit = 20): Promise<number> {
   const due = await prisma.warmupPlan.findMany({
     where: { status: "RUNNING", nextTickAt: { lte: new Date() } },
     select: { id: true },
@@ -118,7 +120,7 @@ export async function tickDueWarmupPlans(limit = 20): Promise<number> {
   });
   let n = 0;
   for (const p of due) {
-    await tickWarmupPlan(p.id).catch(() => {});
+    await tickWarmupPlan(prisma, p.id).catch(() => {});
     n++;
   }
   return n;

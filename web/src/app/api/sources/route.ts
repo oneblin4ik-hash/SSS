@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { fromJsonArray } from "@/lib/jsonArray";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const sources = await prisma.monitoredSource.findMany({
@@ -15,7 +17,7 @@ export async function GET() {
     include: { _count: { select: { messages: true } } },
   });
   return NextResponse.json(
-    sources.map((s) => ({
+    sources.map((s: (typeof sources)[number]) => ({
       id: s.id,
       type: s.type,
       title: s.title,
@@ -24,7 +26,7 @@ export async function GET() {
       lastScanAt: s.lastScanAt,
       messageCount: s._count.messages,
       autoComment: s.autoComment,
-      autoAccountIds: s.autoAccountIds,
+      autoAccountIds: fromJsonArray(s.autoAccountIds),
       autoDailyLimit: s.autoDailyLimit,
       autoTone: s.autoTone,
       createdAt: s.createdAt,
@@ -46,7 +48,8 @@ function normalize(handle: string): { username: string | null; title: string } {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
@@ -67,7 +70,7 @@ export async function POST(req: NextRequest) {
     lastScanAt: source.lastScanAt,
     messageCount: 0,
     autoComment: source.autoComment,
-    autoAccountIds: source.autoAccountIds,
+    autoAccountIds: fromJsonArray(source.autoAccountIds),
     autoDailyLimit: source.autoDailyLimit,
     autoTone: source.autoTone,
     createdAt: source.createdAt,

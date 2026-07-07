@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { decrypt } from "@/lib/crypto";
 import { proxyToInput } from "@/lib/telegram/account";
@@ -12,7 +12,8 @@ const Body = z.object({ text: z.string().min(1).max(4096) });
 
 /** Manual reply in a conversation — human takes over for this one message. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const { id } = await params;
 

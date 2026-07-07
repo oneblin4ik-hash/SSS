@@ -1,9 +1,10 @@
-import { prisma } from "@/lib/prisma";
+import type { PrismaClient } from "@prisma/client";
 import { decrypt } from "@/lib/crypto";
 import { proxyToInput } from "@/lib/telegram/account";
 import { tg, TgError } from "@/lib/telegram/service";
 import { pauseRange, randInt, type Mode } from "./limits";
 import { applyErrorOutcome, actionsLast24h } from "./health";
+import { fromJsonArray } from "@/lib/jsonArray";
 
 const PER_USER_TYPES = new Set(["MAILING", "INVITE", "STORY_VIEW"]);
 
@@ -13,7 +14,7 @@ const PER_USER_TYPES = new Set(["MAILING", "INVITE", "STORY_VIEW"]);
  * flood cooldowns, dedupes contacts across campaigns, and enforces anti-ban
  * outcomes (auto-pause on PEER_FLOOD, cooldown on FLOOD_WAIT).
  */
-export async function tickCampaign(campaignId: string): Promise<{
+export async function tickCampaign(prisma: PrismaClient, campaignId: string): Promise<{
   ok: boolean;
   detail: string;
   cursor: number;
@@ -26,10 +27,13 @@ export async function tickCampaign(campaignId: string): Promise<{
   if (!c) return { ok: false, detail: "campaign not found", cursor: 0, done: true };
   if (c.status !== "RUNNING") return { ok: false, detail: `status=${c.status}`, cursor: c.cursor, done: false };
 
+  const targets = fromJsonArray(c.targets);
+  const accountIds = fromJsonArray(c.accountIds);
+
   const work: { target: string; user?: string; text?: string; tgUserId?: string }[] =
     c.type === "REACTION"
-      ? c.targets.map((t) => ({ target: t }))
-      : (c.audience?.contacts ?? []).map((ct) => ({
+      ? targets.map((t) => ({ target: t }))
+      : (c.audience?.contacts ?? []).map((ct: { username: string | null; tgUserId: string }) => ({
           target: ct.username ? "@" + ct.username : ct.tgUserId,
           tgUserId: ct.tgUserId,
           text: c.message ?? "",
@@ -42,7 +46,7 @@ export async function tickCampaign(campaignId: string): Promise<{
 
   if (work.length === 0) return done("пустой список целей");
 
-  const maxTotal = Math.max(1, c.accountIds.length) * c.perAccountLimit;
+  const maxTotal = Math.max(1, accountIds.length) * c.perAccountLimit;
   if (c.cursor >= work.length || c.sentCount >= maxTotal) return done("кампания завершена");
 
   const item = work[c.cursor];
@@ -51,22 +55,22 @@ export async function tickCampaign(campaignId: string): Promise<{
     const touched = await prisma.contactTouch.findUnique({
       where: { userId_tgUserId_action: { userId: c.userId, tgUserId: item.tgUserId, action: c.type } },
     });
-    if (touched) return advance(campaignId, c, "уже обработан ранее — пропуск", false);
+    if (touched) return advance(prisma, campaignId, c, "уже обработан ранее — пропуск", false);
   }
 
-  const accountId = c.accountIds[c.cursor % c.accountIds.length];
+  const accountId = accountIds[c.cursor % accountIds.length];
   const account = await prisma.telegramAccount.findFirst({
     where: { id: accountId, userId: c.userId },
     include: { proxy: true },
   });
   if (!account?.sessionEnc || !["ACTIVE", "WARMING"].includes(account.status)) {
-    return advance(campaignId, c, "аккаунт недоступен — пропуск", false);
+    return advance(prisma, campaignId, c, "аккаунт недоступен — пропуск", false);
   }
   if (account.floodUntil && account.floodUntil.getTime() > Date.now()) {
-    return advance(campaignId, c, "аккаунт на кулдауне — пропуск", false);
+    return advance(prisma, campaignId, c, "аккаунт на кулдауне — пропуск", false);
   }
-  if ((await actionsLast24h(account.id)) >= account.dailyReplyLimit) {
-    return advance(campaignId, c, "дневной лимит аккаунта — пропуск", false);
+  if ((await actionsLast24h(prisma, account.id)) >= account.dailyReplyLimit) {
+    return advance(prisma, campaignId, c, "дневной лимит аккаунта — пропуск", false);
   }
 
   const session = await decrypt(account.sessionEnc);
@@ -82,8 +86,8 @@ export async function tickCampaign(campaignId: string): Promise<{
       await tg.sendDirect({ session, proxy, target: item.target, text: item.text || "" });
       detail = `сообщение → ${item.target}`;
     } else if (c.type === "INVITE") {
-      await tg.invite({ session, proxy, channel: c.targets[0], user: item.target });
-      detail = `приглашён ${item.target} → ${c.targets[0]}`;
+      await tg.invite({ session, proxy, channel: targets[0], user: item.target });
+      detail = `приглашён ${item.target} → ${targets[0]}`;
     } else if (c.type === "STORY_VIEW") {
       const r = await tg.viewStories({ session, proxy, target: item.target });
       detail = `истории ${r.viewed} у ${item.target}`;
@@ -97,7 +101,7 @@ export async function tickCampaign(campaignId: string): Promise<{
     ok = false;
     detail = e?.message || "ошибка";
     if (e instanceof TgError) {
-      await applyErrorOutcome({
+      await applyErrorOutcome(prisma, {
         accountId: account.id,
         code: e.code,
         retryAfter: e.retryAfter,
@@ -139,6 +143,7 @@ export async function tickCampaign(campaignId: string): Promise<{
 }
 
 async function advance(
+  prisma: PrismaClient,
   campaignId: string,
   c: { cursor: number },
   detail: string,
@@ -152,7 +157,7 @@ async function advance(
   return { ok, detail, cursor: nextCursor, done: false };
 }
 
-export async function tickDueCampaigns(limit = 20): Promise<number> {
+export async function tickDueCampaigns(prisma: PrismaClient, limit = 20): Promise<number> {
   const due = await prisma.campaign.findMany({
     where: { status: "RUNNING", nextTickAt: { lte: new Date() } },
     select: { id: true },
@@ -160,7 +165,7 @@ export async function tickDueCampaigns(limit = 20): Promise<number> {
   });
   let n = 0;
   for (const c of due) {
-    await tickCampaign(c.id).catch(() => {});
+    await tickCampaign(prisma, c.id).catch(() => {});
     n++;
   }
   return n;

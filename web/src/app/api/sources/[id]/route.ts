@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { toJsonArray, fromJsonArray } from "@/lib/jsonArray";
 
 export const runtime = "nodejs";
 
@@ -14,7 +15,8 @@ const Patch = z.object({
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const { id } = await params;
 
@@ -24,19 +26,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = Patch.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid body" }, { status: 400 });
 
-  const updated = await prisma.monitoredSource.update({ where: { id }, data: parsed.data });
+  const { autoAccountIds, ...rest } = parsed.data;
+  const updated = await prisma.monitoredSource.update({
+    where: { id },
+    data: { ...rest, ...(autoAccountIds ? { autoAccountIds: toJsonArray(autoAccountIds) } : {}) },
+  });
   return NextResponse.json({
     id: updated.id,
     isActive: updated.isActive,
     autoComment: updated.autoComment,
-    autoAccountIds: updated.autoAccountIds,
+    autoAccountIds: fromJsonArray(updated.autoAccountIds),
     autoDailyLimit: updated.autoDailyLimit,
     autoTone: updated.autoTone,
   });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const { id } = await params;
   const source = await prisma.monitoredSource.findFirst({ where: { id, userId: user.id } });

@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import type { PrismaClient } from "@prisma/client";
 import { decrypt } from "@/lib/crypto";
 import { proxyToInput } from "@/lib/telegram/account";
 import { tg, TgError } from "@/lib/telegram/service";
@@ -13,7 +13,7 @@ import { autoReplyPoll, type Mode } from "./limits";
  * draft and send an AI reply. Reuses the same anti-ban machinery
  * (applyErrorOutcome/actionsLast24h) the campaign/autocomment engines use.
  */
-export async function tickAutoReplyAccount(accountId: string): Promise<{ ok: boolean; detail: string }> {
+export async function tickAutoReplyAccount(prisma: PrismaClient, accountId: string): Promise<{ ok: boolean; detail: string }> {
   const account = await prisma.telegramAccount.findUnique({
     where: { id: accountId },
     include: { user: true, proxy: true },
@@ -42,7 +42,7 @@ export async function tickAutoReplyAccount(accountId: string): Promise<{ ok: boo
     items = (await tg.inbox({ session, proxy, limit: 30 })).items;
   } catch (e: any) {
     if (e instanceof TgError && ["FLOOD_WAIT", "AUTH_DEAD"].includes(e.code)) {
-      await applyErrorOutcome({ accountId, code: e.code, retryAfter: e.retryAfter, autoPauseOnRisk: account.user.autoPauseOnRisk });
+      await applyErrorOutcome(prisma, { accountId, code: e.code, retryAfter: e.retryAfter, autoPauseOnRisk: account.user.autoPauseOnRisk });
     }
     await reschedule(300);
     return { ok: false, detail: `inbox: ${e?.message || "ошибка"}` };
@@ -83,7 +83,7 @@ export async function tickAutoReplyAccount(accountId: string): Promise<{ ok: boo
     const last = await prisma.chatMessage.findFirst({ where: { conversationId: conv.id }, orderBy: { createdAt: "desc" } });
     if (!last || last.direction !== "IN") continue;
     if (!conv.autoReply) continue;
-    if ((await actionsLast24h(accountId)) >= account.dailyReplyLimit) continue;
+    if ((await actionsLast24h(prisma, accountId)) >= account.dailyReplyLimit) continue;
 
     const history = await prisma.chatMessage.findMany({
       where: { conversationId: conv.id },
@@ -94,7 +94,7 @@ export async function tickAutoReplyAccount(accountId: string): Promise<{ ok: boo
     let replyText: string;
     try {
       replyText = await draftChatReply({
-        history: history.map((m) => ({ role: m.direction === "IN" ? "user" : "assistant", text: m.text })),
+        history: history.map((m: { direction: string; text: string }) => ({ role: m.direction === "IN" ? "user" : "assistant", text: m.text })),
         peerName: item.peerName,
         tone: account.toneStyle || account.user.defaultTone,
         targetChannel: account.user.targetChannel,
@@ -117,7 +117,7 @@ export async function tickAutoReplyAccount(accountId: string): Promise<{ ok: boo
       replied++;
     } catch (e: any) {
       if (e instanceof TgError && ["PEER_FLOOD", "FLOOD_WAIT", "AUTH_DEAD"].includes(e.code)) {
-        await applyErrorOutcome({ accountId, code: e.code, retryAfter: e.retryAfter, autoPauseOnRisk: account.user.autoPauseOnRisk });
+        await applyErrorOutcome(prisma, { accountId, code: e.code, retryAfter: e.retryAfter, autoPauseOnRisk: account.user.autoPauseOnRisk });
       }
       // leave the conversation unread/unanswered — next tick retries the send
     }
@@ -128,7 +128,7 @@ export async function tickAutoReplyAccount(accountId: string): Promise<{ ok: boo
 }
 
 /** Worker entrypoint: tick all due auto-reply accounts. */
-export async function tickDueAutoReplies(limit = 10): Promise<number> {
+export async function tickDueAutoReplies(prisma: PrismaClient, limit = 10): Promise<number> {
   const due = await prisma.telegramAccount.findMany({
     where: { autoReplyEnabled: true, status: { in: ["ACTIVE", "WARMING"] }, autoReplyNextTickAt: { lte: new Date() } },
     select: { id: true },
@@ -136,7 +136,7 @@ export async function tickDueAutoReplies(limit = 10): Promise<number> {
   });
   let n = 0;
   for (const a of due) {
-    await tickAutoReplyAccount(a.id).catch(() => {});
+    await tickAutoReplyAccount(prisma, a.id).catch(() => {});
     n++;
   }
   return n;

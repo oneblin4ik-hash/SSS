@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 import { verifyPassword, issueSession } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 const Body = z.object({ email: z.string().email(), password: z.string().min(1) });
 
 export async function POST(req: NextRequest) {
+  const prisma = getDb();
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "email и пароль обязательны" }, { status: 400 });

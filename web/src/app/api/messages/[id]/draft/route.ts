@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { generateDrafts } from "@/lib/ai";
+import { toJsonArray } from "@/lib/jsonArray";
 
 export const runtime = "nodejs";
 
 const Body = z.object({ accountId: z.string().optional() });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const { id } = await params;
 
@@ -41,7 +43,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         foundMessageId: message.id,
         accountId: account.id,
         content: variants[0],
-        variants,
+        variants: toJsonArray(variants),
         status: "PENDING",
         aiModel: "claude-opus-4-8",
       },

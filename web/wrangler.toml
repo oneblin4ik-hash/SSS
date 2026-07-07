@@ -1,0 +1,17 @@
+name = "propotok-demo"
+main = ".open-next/worker.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "propotok-demo"
+database_id = "79d7393d-82ff-4b06-896d-17a1ecbfa1c0"
+
+[vars]
+NEXT_PUBLIC_APP_URL = "https://propotok-demo.workers.dev"
+DEMO_MODE = "true"

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getDb } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const user = await getAuthUser();
+  const prisma = getDb();
+  const user = await getAuthUser(prisma);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const conversations = await prisma.conversation.findMany({
@@ -18,7 +19,7 @@ export async function GET() {
     },
   });
   return NextResponse.json(
-    conversations.map((c) => ({
+    conversations.map((c: (typeof conversations)[number]) => ({
       id: c.id,
       peerTgId: c.peerTgId,
       peerUsername: c.peerUsername,
@@ -27,7 +28,7 @@ export async function GET() {
       unread: c.unread,
       lastMessageAt: c.lastMessageAt,
       account: c.account,
-      messages: c.messages.map((m) => ({
+      messages: c.messages.map((m: (typeof c.messages)[number]) => ({
         id: m.id,
         direction: m.direction,
         text: m.text,

@@ -10,3 +10,6 @@ next-env.d.ts
 .env.docker
 /.open-next
 /.wrangler
+.dev.vars
+.dev.vars.*
+/migrations/*.db

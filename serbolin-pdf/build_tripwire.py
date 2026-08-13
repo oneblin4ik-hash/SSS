@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""
+Собирает комплект трипваера «План на первые 14 дней»:
+обложку и 14 отдельных PDF — по одному файлу на день, чтобы бот присылал
+страницу вместе с текстом урока.
+
+Запуск:
+    python3 build_tripwire.py            # обложка + все 14 дней
+    python3 build_tripwire.py 12         # только день 12
+    python3 build_tripwire.py cover      # только обложка
+
+Результат — out/tripvaer-00-oblozhka.pdf и out/tripvaer-01..14-<слаг>.pdf
+"""
+import sys
+import unicodedata
+
+from data import days as days_data
+from lib import components as c
+from lib import render, theme
+
+COURSE = "План на первые 14 дней"
+SLOGAN = "Терпение + Дисциплина = Результат"
+
+
+def _slug(text: str) -> str:
+    """Транслит для имён файлов: бот и файловые системы не любят кириллицу."""
+    table = {
+        "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e",
+        "ж": "zh", "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m",
+        "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u",
+        "ф": "f", "х": "h", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "sch",
+        "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya",
+    }
+    out = []
+    for ch in text.lower():
+        if ch in table:
+            out.append(table[ch])
+        elif ch.isalnum() and unicodedata.category(ch)[0] in "LN":
+            out.append(ch)
+        elif ch in " -_":
+            out.append("-")
+    slug = "".join(out)
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return slug.strip("-")[:40]
+
+
+# ─────────────────────────── страница дня ───────────────────────────
+
+def day_page(day: int) -> tuple[str, str, theme.Page]:
+    d = days_data.get(day)
+    page = d["page"]
+    star = c.emo("⭐") if d["star"] else ""
+
+    body = f"""
+<div class="sheet">
+  {c.head(day)}
+  {c.levels_bar(day)}
+  <div class="content">
+    <div class="tw">
+      {c.level_chip(day)}
+      <h1>{d["title"]} {star}</h1>
+      <p class="lead">{d["lead"]}</p>
+    </div>
+    {d["body"]}
+  </div>
+  {c.foot(day)}
+</div>"""
+
+    css = theme.base_css(page) + f"""
+.tw {{ margin-top: {page.base_pt * 0.8:.2f}pt; }}
+.tw .lvchip {{ margin-bottom: {page.base_pt * 0.52:.2f}pt; }}
+.tw h1 {{ margin-bottom: {page.base_pt * 0.42:.2f}pt; }}
+.tw .lead {{ color: {theme.INK_2}; font-size: {page.base_pt * 0.92:.2f}pt;
+  line-height: 1.45; }}
+""" + d["css"]
+
+    slug = f"tripvaer-{day:02d}-{_slug(d['title'])}"
+    return render.document(css, body, f"День {day}. {d['title']}"), slug, page
+
+
+# ─────────────────────────── обложка комплекта ───────────────────────────
+
+def cover_page() -> tuple[str, str, theme.Page]:
+    page = theme.COVER
+
+    rows = "".join(
+        f'<div class="lv"><span class="emo">{lv["emoji"]}</span>'
+        f'<span class="nm">{lv["name"]}</span>'
+        f'<span class="dd">дни {lv["days"][0]}–{lv["days"][1]}</span></div>'
+        for lv in theme.LEVELS
+    )
+
+    body = f"""
+<div class="sheet dark">
+  <div class="diag"></div>
+  <div class="inner">
+    <div class="brand">
+      <img class="ava" src="../assets/avatar.png" alt="">
+      <div class="bt">Эдуард Серболин<span>онлайн-тренер</span></div>
+    </div>
+
+    <div class="eyebrow hot">Курс · 14 дней</div>
+    <h1>План<br>на первые<br>14 дней</h1>
+    <p class="sub">Один короткий урок в день и одно действие. Не теория —
+    то, что делаешь сегодня.</p>
+
+    <div class="levels-list">{rows}</div>
+
+    <div class="bottom">
+      <div class="price"><b>590 ₽</b><span>один раз, навсегда твоё</span></div>
+      <div class="slogan">{SLOGAN}</div>
+    </div>
+  </div>
+</div>"""
+
+    css = theme.base_css(page) + f"""
+.sheet.dark {{ padding: 0; }}
+/* Алая диагональ — приём с обложки лид-магнита в хендоффе Crimson. */
+.diag {{
+  position: absolute; inset: 0;
+  background: {theme.ACCENT};
+  clip-path: polygon(0 68%, 100% 44%, 100% 100%, 0 100%);
+  opacity: 0.92;
+}}
+.diag::after {{
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(11,11,12,0) 40%, rgba(11,11,12,0.55) 100%);
+}}
+.inner {{
+  position: relative;
+  height: 100%;
+  padding: {page.pad_top_mm}mm {page.pad_x_mm}mm {page.pad_bottom_mm}mm;
+  display: flex; flex-direction: column;
+}}
+
+.brand {{ display: flex; align-items: center; gap: 3mm; margin-bottom: 14mm; }}
+.brand .ava {{ width: 11mm; height: 11mm; border-radius: 999px; }}
+.brand .bt {{
+  font-size: {page.base_pt * 0.76:.2f}pt; font-weight: 700; color: {theme.D_TEXT};
+  line-height: 1.25;
+}}
+.brand .bt span {{
+  display: block; font-weight: 400; color: {theme.D_TEXT_4};
+  font-size: {page.base_pt * 0.68:.2f}pt;
+}}
+
+.eyebrow.hot {{ color: {theme.ACCENT_HI}; }}
+h1 {{
+  color: {theme.D_TEXT};
+  font-size: {page.base_pt * 3.0:.2f}pt;
+  line-height: 0.98; letter-spacing: -0.05em;
+  margin-top: 4mm;
+}}
+.sub {{
+  color: {theme.D_TEXT_2}; font-size: {page.base_pt * 0.92:.2f}pt;
+  max-width: 72mm; margin-top: 5mm;
+}}
+
+.levels-list {{ margin-top: 9mm; display: flex; flex-direction: column; gap: 2.6mm; }}
+.levels-list .lv {{
+  display: flex; align-items: center; gap: 2.6mm;
+  font-size: {page.base_pt * 0.84:.2f}pt; color: {theme.D_TEXT};
+}}
+.levels-list .emo {{ font-size: {page.base_pt * 0.95:.2f}pt; }}
+.levels-list .nm {{ font-weight: 700; }}
+.levels-list .dd {{ margin-left: auto; color: {theme.D_TEXT_4}; font-family: {theme.FONT_STACK_MONO};
+  font-size: {page.base_pt * 0.7:.2f}pt; }}
+
+.bottom {{ margin-top: auto; }}
+.price b {{
+  display: block; font-family: {theme.FONT_STACK_DISPLAY}; font-weight: 800;
+  font-size: {page.base_pt * 2.4:.2f}pt; letter-spacing: -0.045em; color: {theme.D_TEXT};
+  line-height: 1;
+}}
+.price span {{
+  display: block; margin-top: 1.6mm; color: rgba(255,255,255,0.78);
+  font-size: {page.base_pt * 0.76:.2f}pt;
+}}
+.slogan {{
+  margin-top: 6mm; padding-top: 3.4mm;
+  border-top: 0.3mm solid rgba(255,255,255,0.28);
+  font-family: {theme.FONT_STACK_DISPLAY}; font-weight: 800;
+  font-size: {page.base_pt * 0.92:.2f}pt; letter-spacing: -0.03em;
+  color: {theme.D_TEXT};
+}}
+"""
+    return render.document(css, body, COURSE), "tripvaer-00-oblozhka", page
+
+
+# ─────────────────────────── сборка ───────────────────────────
+
+def main() -> None:
+    args = sys.argv[1:]
+    if not args:                       # без аргументов — весь комплект
+        want_cover, nums = True, list(range(1, 15))
+    else:
+        want_cover = "cover" in args
+        nums = [int(a) for a in args if a.isdigit()]
+
+    with render.Renderer() as r:
+        if want_cover:
+            html, slug, page = cover_page()
+            print("  ", r.render(html, slug, page).name)
+        for n in nums:
+            html, slug, page = day_page(n)
+            print("  ", r.render(html, slug, page).name)
+        warnings = r.warnings
+
+    if warnings:
+        print("\nПереполнение — эти страницы обрежутся при печати:")
+        for w in warnings:
+            print("  !", w)
+    else:
+        print("Готово, переполнений нет.")
+
+
+if __name__ == "__main__":
+    main()

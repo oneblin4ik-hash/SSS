@@ -68,11 +68,11 @@ def day_page(day: int) -> tuple[str, str, theme.Page]:
 </div>"""
 
     css = theme.base_css(page) + f"""
-.tw {{ margin-top: {page.base_pt * 0.8:.2f}pt; }}
+.tw {{ margin-top: {page.base_pt * 0.55:.2f}pt; }}
 .tw .lvchip {{ margin-bottom: {page.base_pt * 0.52:.2f}pt; }}
-.tw h1 {{ margin-bottom: {page.base_pt * 0.42:.2f}pt; }}
+.tw h1 {{ margin-bottom: {page.base_pt * 0.34:.2f}pt; }}
 .tw .lead {{ color: {theme.INK_2}; font-size: {page.base_pt * 0.92:.2f}pt;
-  line-height: 1.45; }}
+  line-height: 1.38; }}
 """ + d["css"]
 
     slug = f"tripvaer-{day:02d}-{_slug(d['title'])}"

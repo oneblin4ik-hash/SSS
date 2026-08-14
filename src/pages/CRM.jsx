@@ -21,7 +21,7 @@ const LeadModal = ({ lead, onSave, onDelete, onClose }) => {
     <div className="ss-modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="ss-modal">
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-          <h2 style={{ fontFamily:"var(--font-display)", fontSize:22, margin:0 }}>
+          <h2 style={{ fontFamily:"var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", fontSize:22, margin:0 }}>
             {isNew ? "Новый контакт" : form.name}
           </h2>
           <button className="ss-ghost-btn" onClick={onClose} style={{ padding:"4px 8px" }}>✕</button>

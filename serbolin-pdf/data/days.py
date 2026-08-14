@@ -485,10 +485,10 @@ def day8() -> dict:
 .lib .m { border: 0.3mm solid #E0E0E0; border-radius: 3.2mm; padding: 2.6mm 3mm; }
 .lib .m .mt { font-size: 0.76em; font-weight: 700; letter-spacing: 0.1em;
   text-transform: uppercase; color: #9E1319; margin-bottom: 1.8mm; }
-.lib .m .ln { border-bottom: 0.25mm solid #E0E0E0; height: 5mm; }
+.lib .m .ln { border-bottom: 0.25mm solid #E0E0E0; height: 4.5mm; }
 .lib .m .tag { font-size: 0.66em; color: #9AA0AE; margin-top: 1.6mm; }
 .shop { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; margin-top: 3mm; }
-.shop .cat .ln { border-bottom: 0.25mm dotted #9AA0AE; height: 6mm; }
+.shop .cat .ln { border-bottom: 0.25mm dotted #9AA0AE; height: 5.6mm; }
 .shop .cat .eyebrow { display: block; margin-bottom: 1.4mm; }
 .sec { margin-top: 5mm; }
 .foot-note { margin-top: 3mm; }
@@ -739,7 +739,7 @@ def day14() -> dict:
 
 <div class="sec">
   <div class="eyebrow">Инструменты, которые остаются</div>
-  <div class="tools">{"".join(f"<div class='t'>{t}</div>" for t in tools)}</div>
+  {c.numlist(tools)}
 </div>
 
 {c.note("Что дальше",
@@ -754,9 +754,12 @@ def day14() -> dict:
 .ab .pt .ln { border-bottom: 0.25mm solid #C9CCD4; height: 5.4mm; }
 .ab .arw { align-self: center; color: #D8232A; font-weight: 700; font-size: 1.3em; }
 .th { margin-top: 2mm; font-size: 0.92em; }
-.tools { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5mm; margin-top: 2.2mm; }
-.tools .t { font-size: 0.72em; line-height: 1.3; background: #F2F3F6;
-  border-radius: 2mm; padding: 1.5mm 2mm; }
+/* Восемь инструментов в одну колонку не помещаются на вертикальный лист —
+   раскладываем компонент «Что внутри» в две колонки, сам вид строки
+   (акцентный номер + текст по базовой линии) не меняем. */
+.numlist { display: grid; grid-template-columns: 1fr 1fr; gap: 2mm 3mm; margin-top: 2.2mm; }
+.numlist .n { font-size: 0.95em; }
+.numlist .tx { font-size: 0.74em; line-height: 1.3; }
 .sec { margin-top: 4.2mm; }
 .mt { margin-top: 2.2mm; }
 """,

@@ -1,0 +1,204 @@
+/* ============================================================
+   ПАЛИТРА И ТИПОГРАФИКА — дизайн-система Crimson
+   Void #0B0B0C · Plate #131315 · Accent #D8232A · Paper #FFFFFF
+   Один алый акцент, не больше ~20% площади экрана. Второго
+   акцентного цвета в системе нет — предупреждения тоже алые,
+   отличаются насыщенностью, а не оттенком.
+
+   Display — Manrope, а не Space Grotesk из хендоффа: у Space
+   Grotesk нет кириллицы (Google Fonts отдаёт latin, latin-ext и
+   vietnamese), весь текст здесь русский. В самом макете
+   «Бумага, а не лендинг» абзац вручную переопределён на Manrope —
+   то есть автор системы упёрся в это же и выбрал ту же замену.
+   ============================================================ */
+:root{
+  --void:#0B0B0C;
+  --plate:#131315;
+  --plate-2:#1B1B1E;
+  --line:rgba(255,255,255,.07);
+  --line-2:rgba(255,255,255,.08);
+  --line-3:rgba(255,255,255,.24);
+  --accent:#D8232A;
+  --accent-hi:#F4363D;
+  --accent-deep:#9E1319;
+  --accent-soft:rgba(216,35,42,.12);
+  --text:#FFFFFF;
+  --text-2:#E6E6E6;
+  --text-3:#C8C8CE;
+  --text-4:#9A9AA0;
+  --text-5:#6B6B72;
+  --text-off:#4E4E56;
+  --r:16px;
+  --r-lg:20px;
+  --r-xl:28px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--void);color:var(--text-3)}
+body{
+  font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:17px;line-height:1.55;letter-spacing:-.1px;
+  -webkit-font-smoothing:antialiased;
+  overscroll-behavior-y:contain;
+}
+h1,h2,h3,.serif{font-family:'Manrope','Inter',sans-serif;font-weight:800;letter-spacing:-.04em;line-height:1.15;margin:0;color:var(--text)}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+.app{max-width:520px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;position:relative}
+
+/* ---------- прогресс ----------
+   Четыре сегмента по фазам оставлены: они несут информацию,
+   которой нет в одной сплошной полосе макета. Геометрия и цвет —
+   по системе: 4px, трек rgba(255,255,255,.1), заливка акцентом. */
+.top{position:sticky;top:0;z-index:20;background:var(--void);padding:14px 22px 12px}
+.phases{display:flex;gap:6px}
+.ph{flex:1}
+.ph-bar{height:4px;border-radius:9999px;background:rgba(255,255,255,.1);overflow:hidden}
+.ph-fill{height:100%;width:0;background:var(--accent);border-radius:9999px;transition:width .36s cubic-bezier(.4,0,.2,1)}
+.ph-name{font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--text-5);margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.ph.on .ph-name{color:var(--accent-hi)}
+.step{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;
+  font-size:11px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:var(--text-5)}
+.step b{color:var(--accent-hi);font-weight:600}
+
+/* ---------- экран ---------- */
+.screen{flex:1;padding:20px 22px 132px}
+.fade{animation:fade .26s cubic-bezier(.2,0,0,1) both}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:1.8px;color:var(--accent-hi);margin-bottom:16px;font-weight:600}
+h1{font-size:30px;line-height:1.15;letter-spacing:-1.2px;margin-bottom:12px}
+h2{font-size:24px;line-height:1.18;letter-spacing:-.9px;margin-bottom:10px}
+.sub{color:#8A8A90;font-size:14.5px;line-height:1.4;margin:0 0 26px}
+p{margin:0 0 14px}
+
+/* ---------- карточки-варианты ---------- */
+.opts{display:flex;flex-direction:column;gap:11px;margin-top:4px}
+.opt{
+  display:flex;align-items:center;gap:14px;
+  background:var(--plate);border:1px solid var(--line-2);border-radius:var(--r);
+  padding:17px 18px;font-size:16px;font-weight:600;line-height:1.3;color:var(--text-2);
+  cursor:pointer;text-align:left;width:100%;font-family:inherit;
+  transition:border-color .22s,background .22s,transform .12s;
+}
+.opt:hover{border-color:rgba(216,35,42,.6)}
+.opt:active{transform:scale(.96)}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--text)}
+.tick{width:20px;height:20px;flex:0 0 20px;border-radius:6px;border:1px solid var(--line-3);display:grid;place-items:center;color:#fff}
+.opt[aria-pressed="true"] .tick{border-color:var(--accent);background:var(--accent)}
+.tick svg{width:12px;height:12px;opacity:0;transition:opacity .16s}
+.opt[aria-pressed="true"] .tick svg{opacity:1}
+.opt.sq .tick{border-radius:6px}
+
+/* ---------- микрофидбек тренера ---------- */
+.fb{
+  margin-top:18px;padding:15px 18px;background:var(--plate);
+  border-left:3px solid var(--accent);border-radius:0 var(--r) var(--r) 0;
+  font-size:14.5px;line-height:1.5;color:var(--text-3);animation:fbin .3s cubic-bezier(.2,0,0,1) both;
+}
+@keyframes fbin{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+.fb .who{display:block;font-size:10px;letter-spacing:1.8px;text-transform:uppercase;color:var(--accent-hi);margin-bottom:6px;font-weight:600}
+
+/* ---------- поля ---------- */
+input[type=text]{
+  width:100%;background:var(--plate);border:1px solid var(--line);border-radius:18px;
+  padding:17px 18px;color:var(--text);font-size:16px;font-family:inherit;
+  transition:border-color .22s;
+}
+input[type=text]::placeholder{color:var(--text-5)}
+input[type=text]:focus{outline:none;border-color:var(--accent)}
+.field{margin-bottom:24px}
+.flabel{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:600;color:#8A8A90;margin-bottom:10px}
+.fval{font-family:'JetBrains Mono',monospace;font-size:19px;color:var(--accent-hi);font-weight:700}
+input[type=range]{width:100%;-webkit-appearance:none;background:transparent;height:28px;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:rgba(255,255,255,.1);border-radius:9999px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;border:none;margin-top:-8px;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+input[type=range]::-moz-range-track{height:4px;background:rgba(255,255,255,.1);border-radius:9999px}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border:none;border-radius:50%;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+.duo{display:flex;gap:11px}
+.duo .opt{justify-content:center}
+
+/* ---------- фигуры ---------- */
+.figs{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.fig{background:var(--plate);border:1px solid var(--line-2);border-radius:18px;padding:10px 4px 8px;cursor:pointer;transition:border-color .22s,background .22s}
+.fig:hover{border-color:rgba(216,35,42,.6)}
+.fig[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.fig svg{width:100%;height:78px;display:block}
+.fig .cap{font-size:10px;color:var(--text-5);text-align:center;margin-top:6px;font-weight:600}
+.fig[aria-pressed="true"] .cap{color:var(--accent-hi)}
+
+/* ---------- дашборд ---------- */
+.ab{display:flex;align-items:center;gap:14px;background:var(--plate);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;margin-bottom:14px}
+.ab .col{flex:1;text-align:center}
+.ab .k{font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:var(--text-5);margin-bottom:6px;font-weight:600}
+.ab .v{font-family:'Manrope',sans-serif;font-size:26px;font-weight:800;letter-spacing:-1px;color:var(--text)}
+.ab .v.gold{color:var(--accent-hi)}
+.ab .arrow{color:var(--accent);font-size:20px}
+.chart{background:var(--plate);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 14px 12px;margin-bottom:14px}
+.chart svg{width:100%;display:block;overflow:visible}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text-5);margin-top:12px;padding:0 2px}
+.legend i{display:inline-block;width:14px;height:2px;margin-right:6px;vertical-align:middle}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-bottom:14px}
+.tile{background:var(--plate);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 8px;text-align:center}
+/* Цифры плиток — белые. Это данные, а не действие: на экране прогноза
+   рядом стоит алая кнопка, и три алых числа отбирали бы у неё внимание,
+   разгоняя акцент далеко за 20% площади. */
+.tile .v{font-family:'Manrope',sans-serif;font-size:24px;font-weight:800;letter-spacing:-1px;color:var(--text)}
+.tile .k{font-size:10px;color:var(--text-5);margin-top:5px;line-height:1.3}
+/* Предупреждение. Отдельного «опасного» цвета в системе нет —
+   отличаем заливкой и насыщенностью, а не вторым оттенком. */
+.warn{background:rgba(216,35,42,.10);border-left:3px solid var(--accent);border-radius:0 var(--r) var(--r) 0;padding:15px 18px;font-size:14.5px;line-height:1.5;margin-bottom:14px}
+.warn b{color:var(--accent-hi)}
+.note{font-size:13px;color:var(--text-5);line-height:1.45}
+
+/* ---------- блоки диагностики ---------- */
+.blk{background:var(--plate);border:1px solid var(--line);border-radius:var(--r-lg);padding:22px;margin-bottom:12px}
+.blk .h{font-family:'Manrope',sans-serif;font-weight:800;font-size:20px;letter-spacing:-.7px;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.blk .num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent-hi);border:1px solid rgba(216,35,42,.45);border-radius:6px;padding:3px 7px;font-weight:700}
+.blk p:last-child{margin-bottom:0}
+.blk ul{margin:0 0 14px;padding-left:18px}
+.blk li{margin-bottom:8px}
+.blk li::marker{color:var(--accent)}
+.type-seal{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.seal{width:56px;height:56px;flex:0 0 56px;border-radius:50%;border:1px solid rgba(216,35,42,.45);display:grid;place-items:center;font-size:22px;background:var(--accent-soft)}
+.type-seal .tn{font-family:'Manrope',sans-serif;font-weight:800;font-size:20px;letter-spacing:-.7px;color:var(--text)}
+.type-seal .tl{font-size:11px;text-transform:uppercase;letter-spacing:1.8px;color:var(--accent-hi);margin-top:5px;font-weight:600}
+
+/* ---------- кнопки ---------- */
+.bottom{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:14px 22px calc(14px + env(safe-area-inset-bottom));
+  background:linear-gradient(to top,var(--void) 62%,rgba(11,11,12,0));pointer-events:none}
+.bottom-in{max-width:520px;margin:0 auto;pointer-events:auto}
+.btn{
+  width:100%;border:none;border-radius:9999px;padding:19px;font-family:inherit;
+  font-size:13px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
+  background:var(--accent);color:#fff;cursor:pointer;
+  box-shadow:0 10px 30px rgba(216,35,42,.3);
+  transition:transform .12s,filter .22s,box-shadow .22s;
+}
+.btn:hover{background:var(--accent-hi)}
+.btn:active{transform:scale(.96)}
+.btn:disabled{background:rgba(255,255,255,.03);color:var(--text-off);box-shadow:none;cursor:not-allowed}
+.btn.ghost{background:transparent;color:#8A8A90;border:1px solid var(--line-2);margin-top:10px;
+  font-weight:600;letter-spacing:1px;box-shadow:none}
+.btn.ghost:hover{background:transparent;color:var(--text)}
+.back{background:none;border:none;color:var(--text-5);font-family:inherit;font-size:13px;padding:6px 0;cursor:pointer}
+
+/* ---------- интро ---------- */
+.hero-seal{width:76px;height:76px;margin:0 auto 22px;border-radius:50%;border:1px solid rgba(216,35,42,.45);display:grid;place-items:center;overflow:hidden;position:relative}
+.hero-seal img{width:100%;height:100%;object-fit:cover;display:block}
+.hero-seal::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:1px solid rgba(216,35,42,.18)}
+.hero-seal span{font-family:'Manrope',sans-serif;font-weight:800;font-size:26px;color:var(--accent)}
+.bullets{list-style:none;padding:0;margin:0 0 22px}
+.bullets li{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--line);font-size:15.5px;line-height:1.45}
+.bullets li:last-child{border:none}
+.bullets .n{font-family:'Manrope',sans-serif;font-size:15px;color:var(--accent);padding-top:1px;font-weight:800;letter-spacing:-.6px}
+.motto{font-family:'Manrope',sans-serif;font-size:15px;letter-spacing:-.5px;color:var(--accent-hi);text-align:center;margin:26px 0 0;font-weight:800}
+
+/* ---------- печать фазы ---------- */
+.stamp{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(11,11,12,.86);animation:fade .2s ease both;pointer-events:none}
+.stamp-in{text-align:center;animation:stampin .5s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes stampin{from{opacity:0;transform:scale(1.5) rotate(-9deg)}to{opacity:1;transform:none}}
+.stamp .ring{width:104px;height:104px;margin:0 auto 16px;border:1px solid rgba(216,35,42,.45);background:var(--accent-soft);border-radius:50%;display:grid;place-items:center;font-size:38px}
+.stamp .t1{font-size:10px;letter-spacing:1.8px;text-transform:uppercase;color:var(--text-5);font-weight:600}
+.stamp .t2{font-family:'Manrope',sans-serif;font-weight:800;font-size:24px;letter-spacing:-.9px;color:var(--text);margin-top:6px}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}

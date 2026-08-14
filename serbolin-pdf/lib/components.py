@@ -86,6 +86,16 @@ def fill(width_mm: float = 30) -> str:
     return f'<span class="fill" style="min-width:{width_mm}mm"></span>'
 
 
+def numlist(items: list[str]) -> str:
+    """Нумерованный список в стиле блока «Что внутри» из дизайн-системы."""
+    rows = "".join(
+        f'<div class="it"><span class="n">{i:02d}</span>'
+        f'<span class="tx">{t}</span></div>'
+        for i, t in enumerate(items, 1)
+    )
+    return f'<div class="numlist">{rows}</div>'
+
+
 def note(label: str, inner: str) -> str:
     return f'<div class="note"><span class="eyebrow">{label}</span>{inner}</div>'
 

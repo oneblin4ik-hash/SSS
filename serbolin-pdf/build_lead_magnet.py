@@ -238,7 +238,7 @@ def css() -> str:
 .cover {{ padding: 0; }}
 .cover .diag {{
   position: absolute; inset: 0; background: {theme.ACCENT};
-  clip-path: polygon(0 74%, 100% 52%, 100% 100%, 0 100%); opacity: 0.92;
+  clip-path: polygon(0 62%, 100% 34%, 100% 100%, 0 100%); opacity: 0.92;
 }}
 .cover .inner {{
   position: relative; height: 100%; display: flex; flex-direction: column;
@@ -250,9 +250,11 @@ def css() -> str:
   color: {theme.D_TEXT}; line-height: 1.25; }}
 .cover .brand .bt span {{ display: block; font-weight: 400;
   color: {theme.D_TEXT_4}; font-size: {p.base_pt * 0.68:.2f}pt; }}
-/* Два margin-top:auto (здесь и у .bottom) делят свободную высоту поровну —
-   имя садится в оптическую середину, а не прижимается к шапке. */
-.cover .eyebrow.hot {{ color: {theme.ACCENT_HI}; margin-top: auto; }}
+/* Заголовочный блок держим в верхней, чёрной части листа. Диагональ по
+   системе поднимается до 34% у правого края, и центрированный блок заезжал
+   на алое: подзаголовок #C8C8CE по #D8232A давал контраст около 2.4:1.
+   Нижнюю половину занимает сама диагональ — пустоты там больше нет. */
+.cover .eyebrow.hot {{ color: {theme.ACCENT_HI}; }}
 .cover h1 {{ color: {theme.D_TEXT}; font-size: {p.base_pt * 3.4:.2f}pt;
   line-height: 0.98; letter-spacing: -0.05em; margin-top: 4mm; }}
 .cover .sub {{ color: {theme.D_TEXT_2}; font-size: {p.base_pt * 0.92:.2f}pt;

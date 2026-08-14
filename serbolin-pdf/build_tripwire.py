@@ -120,7 +120,7 @@ def cover_page() -> tuple[str, str, theme.Page]:
 .diag {{
   position: absolute; inset: 0;
   background: {theme.ACCENT};
-  clip-path: polygon(0 68%, 100% 44%, 100% 100%, 0 100%);
+  clip-path: polygon(0 62%, 100% 34%, 100% 100%, 0 100%);
   opacity: 0.92;
 }}
 .diag::after {{
@@ -164,8 +164,11 @@ h1 {{
 }}
 .levels-list .emo {{ font-size: {page.base_pt * 0.95:.2f}pt; }}
 .levels-list .nm {{ font-weight: 700; }}
-.levels-list .dd {{ margin-left: auto; color: {theme.D_TEXT_4}; font-family: {theme.FONT_STACK_MONO};
-  font-size: {page.base_pt * 0.7:.2f}pt; }}
+/* Диагональ по системе идёт от 62% слева к 34% справа, поэтому правый край
+   списка уровней ложится на алое. Приглушённый серый там пропадает —
+   держим светлый полупрозрачный белый: читается и на чёрном, и на алом. */
+.levels-list .dd {{ margin-left: auto; color: rgba(255,255,255,.72);
+  font-family: {theme.FONT_STACK_MONO}; font-size: {page.base_pt * 0.7:.2f}pt; }}
 
 .bottom {{ margin-top: auto; }}
 .price b {{

@@ -39,7 +39,7 @@ UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
 
 # Ровно те гарнитуры и начертания, что объявлены в <link> оригинала.
 FAMILIES = [
-    "Playfair+Display:wght@700;900",
+    "Manrope:wght@400;600;700;800",
     "Inter:wght@400;500;600;700",
     "JetBrains+Mono:wght@500;700",
 ]

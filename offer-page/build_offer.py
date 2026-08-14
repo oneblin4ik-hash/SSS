@@ -170,15 +170,16 @@ def body() -> str:
         протокол срыва и твои цифры останутся. Пользоваться ими можно годами.</p>
 
         <div class="price">
-          <span class="rub">590 ₽</span>
+          <span class="rub">690 ₽</span>
+          <span class="was"><s>1&thinsp;990 ₽</s> обычная цена</span>
           <span class="once">один раз, навсегда твоё</span>
         </div>
 
         <ul class="included">{included_html()}</ul>
 
         <div class="cta-row">
-          <a class="btn" href="#">Забрать план — 590 ₽</a>
-          <p class="terms">Цена держится 48 часов после теста.<br>
+          <a class="btn" href="#">Забрать план — 690 ₽</a>
+          <p class="terms">690 ₽ держатся 48 часов после теста, дальше 1&thinsp;990 ₽.<br>
           Оплата один раз, подписки нет.</p>
         </div>
       </div>
@@ -271,6 +272,9 @@ h1,h2{font-weight:800;letter-spacing:-.04em;line-height:1.04;text-wrap:balance}
 .price{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;margin:32px 0 30px}
 .price .rub{font:800 clamp(48px,6vw,62px)/1 'Manrope',sans-serif;
   letter-spacing:-2.6px;color:var(--text)}
+.price .was{font-size:15px;color:var(--text-4)}
+.price .was s{color:var(--text-3);text-decoration-thickness:1px;
+  text-underline-offset:2px;margin-right:6px}
 .price .once{font-size:15px;color:var(--text-4)}
 
 .included{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:14px 22px}

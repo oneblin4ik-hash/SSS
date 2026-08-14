@@ -137,7 +137,7 @@ def cover_page(variant: str = DEFAULT_COVER) -> tuple[str, str, theme.Page]:
     <div class="levels-list">{rows}</div>
 
     <div class="bottom">
-      <div class="price"><b>590 ₽</b><span>один раз, навсегда твоё</span></div>
+      <div class="price"><b>690 ₽</b><span><s>1&thinsp;990 ₽</s> обычная цена</span><span>один раз, навсегда твоё · 48 часов после теста</span></div>
       <div class="slogan">{SLOGAN}</div>
     </div>
   </div>
@@ -232,6 +232,9 @@ h1 {{
   display: block; margin-top: 1.6mm; color: rgba(255,255,255,0.78);
   font-size: {page.base_pt * 0.76:.2f}pt;
 }}
+/* Старая цена — не второй акцент: тот же полупрозрачный белый, что и
+   подпись, только зачёркнутый. Алое на обложке остаётся клином. */
+.price span s {{ margin-right: 1.4mm; }}
 .slogan {{
   margin-top: 6mm; padding-top: 3.4mm;
   border-top: 0.3mm solid rgba(255,255,255,0.28);

@@ -44,7 +44,8 @@ FONT_FILES = [
     ("JetBrains Mono", 500),
 ]
 
-PRICE = "590 ₽"
+PRICE = "690 ₽"
+PRICE_WAS = "1\u2009990 ₽"
 SLOGAN = "Терпение + Дисциплина = Результат"
 
 
@@ -197,7 +198,8 @@ img{{max-width:100%;display:block}}
 .hero .price{{font-family:'Manrope',sans-serif;font-weight:800;font-size:34px;
   letter-spacing:-.04em;color:var(--text)}}
 .hero .price span{{display:block;font-size:13px;font-weight:400;
-  letter-spacing:0;color:var(--text-3);margin-top:4px}}
+  letter-spacing:0;color:var(--text-3);margin-top:6px;max-width:44ch}}
+.hero .price span s{{color:var(--text-4);margin-right:5px}}
 .hero .slogan{{font-family:'Manrope',sans-serif;font-weight:800;
   letter-spacing:-.02em;color:var(--text);font-size:16px}}
 
@@ -364,7 +366,7 @@ def build_body(days: list[dict]) -> str:
     присылает урок, задание и страницу дня в PDF. Вечером — чек-ин одной
     кнопкой: сделал или не вышло.</p>
     <div class="meta">
-      <div class="price">{PRICE}<span>один раз, навсегда твоё</span></div>
+      <div class="price">{PRICE}<span><s>{PRICE_WAS}</s> обычная цена · 690 ₽ держатся 48 часов после теста</span></div>
       <div class="slogan">{SLOGAN}</div>
     </div>
   </div>

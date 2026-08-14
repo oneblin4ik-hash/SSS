@@ -356,6 +356,9 @@ def day6() -> dict:
     return {
         "title": "Вечерний голод",
         "page": PHONE,
+        # Механика вечернего голода — то, что держат в голове у холодильника
+        # в 22:00, а не заполняют ручкой. Тёмный лист.
+        "dark": True,
         "lead": "Днём человек герой, а вечером стоит у холодильника и не "
                 "понимает, что происходит. Это счёт за день, и оплачивают его "
                 "завтраком.",
@@ -379,20 +382,21 @@ def day6() -> dict:
     <div><div class="box"></div>Не тянуло вообще</div>
   </div>
 </div>""",
-        "css": """
-.tl { display: flex; gap: 2mm; margin-top: 4mm; }
-.tl .sl { flex: 1; }
-.tl .sl .bar { height: 1.4mm; border-radius: 999px; background: rgba(216,35,42,0.30);
-  margin-bottom: 1.6mm; }
-.tl .sl.risk .bar { background: #D8232A; }
-.tl .sl b { font-size: 0.74em; color: #292F3B; display: block; line-height: 1.25; }
-.tl .sl .small { font-size: 0.68em; line-height: 1.3; margin-top: 0.6mm; }
-.sn { display: grid; grid-template-columns: 1fr 1fr; gap: 1.8mm; margin-top: 2.4mm; }
-.sn .s { background: #F2F3F6; border-radius: 2.4mm; padding: 1.8mm 2.4mm; font-size: 0.8em; }
-.cmp { display: flex; gap: 4mm; margin-top: 2.4mm; font-size: 0.85em; }
-.cmp > div { display: flex; gap: 1.6mm; align-items: center; }
-.sec { margin-top: 5mm; }
-.mt { margin-top: 2.4mm; }
+        "css": f"""
+.tl {{ display: flex; gap: 2mm; margin-top: 4mm; }}
+.tl .sl {{ flex: 1; }}
+.tl .sl .bar {{ height: 1.4mm; border-radius: 999px; background: rgba(216,35,42,0.35);
+  margin-bottom: 1.6mm; }}
+.tl .sl.risk .bar {{ background: {theme.ACCENT}; }}
+.tl .sl b {{ font-size: 0.74em; color: {theme.D_TEXT}; display: block; line-height: 1.25; }}
+.tl .sl .small {{ font-size: 0.68em; line-height: 1.3; margin-top: 0.6mm; }}
+.sn {{ display: grid; grid-template-columns: 1fr 1fr; gap: 1.8mm; margin-top: 2.4mm; }}
+.sn .s {{ background: {theme.PLATE_2}; border-radius: 2.4mm; padding: 1.8mm 2.4mm;
+  font-size: 0.8em; color: {theme.D_TEXT_2}; }}
+.cmp {{ display: flex; gap: 4mm; margin-top: 2.4mm; font-size: 0.85em; }}
+.cmp > div {{ display: flex; gap: 1.6mm; align-items: center; }}
+.sec {{ margin-top: 5mm; }}
+.mt {{ margin-top: 2.4mm; }}
 """,
     }
 
@@ -539,6 +543,9 @@ def day10() -> dict:
     return {
         "title": "«Вредная еда» без запретов",
         "page": PHONE,
+        # Правило встраивания читают и вспоминают в кафе, а не заполняют.
+        # Тёмный лист.
+        "dark": True,
         "lead": "Запрещённых продуктов в этой системе нет. И дело не в доброте: "
                 "запрет держится недели три, а потом один пирожок превращается "
                 "в потерянный месяц.",
@@ -575,16 +582,18 @@ def day10() -> dict:
   <p class="small muted">Почти всегда там нет привычной вины — а именно вина и
   выбивала тебя раньше.</p>
 </div>""",
-        "css": """
-.chain { margin-top: 4mm; }
-.chain .ch { display: flex; flex-wrap: wrap; gap: 1.6mm; align-items: center;
-  margin-top: 2.4mm; font-size: 0.82em; }
-.chain .ch span { background: #F2F3F6; border-radius: 2mm; padding: 1.4mm 2.2mm; }
-.chain .ch span.bad { background: rgba(216,35,42,0.10); color: #9E1319; font-weight: 700; }
-.chain .ch i { color: #9AA0AE; font-style: normal; }
-.pl { font-size: 1.05em; }
-.sec { margin-top: 5mm; }
-.mt { margin-top: 2.4mm; }
+        "css": f"""
+.chain {{ margin-top: 4mm; }}
+.chain .ch {{ display: flex; flex-wrap: wrap; gap: 1.6mm; align-items: center;
+  margin-top: 2.4mm; font-size: 0.82em; }}
+.chain .ch span {{ background: {theme.PLATE_2}; border-radius: 2mm; padding: 1.4mm 2.2mm;
+  color: {theme.D_TEXT_2}; }}
+.chain .ch span.bad {{ background: rgba(216,35,42,0.22); color: {theme.D_TEXT};
+  font-weight: 700; }}
+.chain .ch i {{ color: {theme.D_TEXT_4}; font-style: normal; }}
+.pl {{ font-size: 1.05em; }}
+.sec {{ margin-top: 5mm; }}
+.mt {{ margin-top: 2.4mm; }}
 """,
     }
 

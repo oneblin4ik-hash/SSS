@@ -19,6 +19,11 @@ from lib import components as c
 from lib import render, theme
 
 COURSE = "План на первые 14 дней"
+
+# Основная раскладка обложки. «Клин слева» — приём, который базовая
+# система прямо подписывает как «Герой товара, обложка». «Горизонт»
+# собирается по запросу как альтернатива: python3 build_tripwire.py horizon
+DEFAULT_COVER = "wedge"
 SLOGAN = "Терпение + Дисциплина = Результат"
 
 
@@ -87,7 +92,7 @@ def day_page(day: int) -> tuple[str, str, theme.Page]:
 
 # ─────────────────────────── обложка комплекта ───────────────────────────
 
-def cover_page(variant: str = "horizon") -> tuple[str, str, theme.Page]:
+def cover_page(variant: str = DEFAULT_COVER) -> tuple[str, str, theme.Page]:
     """Обложка комплекта в одном из двух срезов базовой системы.
 
     «Диагональный срез» — подпись Crimson: одна диагональ на композицию,
@@ -235,7 +240,7 @@ h1 {{
   color: {theme.D_TEXT};
 }}
 """
-    slug = "tripvaer-00-oblozhka" + ("" if variant == "horizon" else f"-{variant}")
+    slug = "tripvaer-00-oblozhka" + ("" if variant == DEFAULT_COVER else f"-{variant}")
     return render.document(css, body, COURSE), slug, page
 
 
@@ -244,11 +249,11 @@ h1 {{
 def main() -> None:
     args = sys.argv[1:]
     if not args:                       # без аргументов — весь комплект
-        covers, nums = ["horizon"], list(range(1, 15))
+        covers, nums = [DEFAULT_COVER], list(range(1, 15))
     else:
         covers = [v for v in ("horizon", "wedge") if v in args]
         if "cover" in args:
-            covers = ["horizon", "wedge"]   # обе раскладки на выбор владельцу
+            covers = ["wedge", "horizon"]   # обе раскладки, чтобы сравнить
         nums = [int(a) for a in args if a.isdigit()]
 
     with render.Renderer() as r:

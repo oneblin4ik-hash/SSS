@@ -147,6 +147,8 @@ Storybook отсутствует, и заводить его некуда — с
 * `serbolin-pdf/preview/*.png` — растр всех 17 PDF (`python3 preview.py`);
 * `quiz-test/shots/*.png` — скриншоты экранов квиза (`test_quiz_demo.py`);
 * `shots-dash/*.png` — восемь страниц дашборда (`python3 shot_dashboard.py`);
+* `serbolin-pdf/out/kurs-14-dney.html` — все 14 уроков с страницами дней
+  одной кликабельной страницей (`python3 build_course.py`);
 * макеты дизайн-системы: `Crimson Funnel Kit.dc.html` в пакете хендоффа —
   секции «Компоненты вопроса», «Мобильный поток», «Бумага, а не лендинг».
 
@@ -268,7 +270,10 @@ serbolin-pdf/         Crimson Print — 17 PDF воронки
   lib/render.py       HTML → PDF, детектор переполнения
   lib/profile.py      профиль из квиза; ИМТ, тип срыва, прогноз
   data/days.py        содержимое 14 страниц
-  build_*.py          сборщики, preview.py — растр для проверки
+  build_tripwire.py   обложка + 14 страниц дней
+  build_lead_magnet.py персональный PDF после квиза
+  build_course.py     интерактив: 14 уроков + страницы дней, всё в одном HTML
+  preview.py          растр всех PDF для проверки глазами
 
 quiz-test/            Crimson Screen — квиз
   kviz-serbolin.html  рабочий Mini App (единственный файл, без сборки)

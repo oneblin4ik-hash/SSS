@@ -366,7 +366,7 @@ def build_body(days: list[dict]) -> str:
     присылает урок, задание и страницу дня в PDF. Вечером — чек-ин одной
     кнопкой: сделал или не вышло.</p>
     <div class="meta">
-      <div class="price">{PRICE}<span><s>{PRICE_WAS}</s> обычная цена · 690 ₽ держатся 48 часов после теста</span></div>
+      <div class="price">{PRICE}<span><s>{PRICE_WAS}</s> дальше будет столько · {PRICE} — стартовая цена, бери пока не подняли</span></div>
       <div class="slogan">{SLOGAN}</div>
     </div>
   </div>

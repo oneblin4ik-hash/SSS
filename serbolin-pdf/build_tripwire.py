@@ -137,7 +137,7 @@ def cover_page(variant: str = DEFAULT_COVER) -> tuple[str, str, theme.Page]:
     <div class="levels-list">{rows}</div>
 
     <div class="bottom">
-      <div class="price"><b>690 ₽</b><span><s>1&thinsp;990 ₽</s> обычная цена</span><span>один раз, навсегда твоё · 48 часов после теста</span></div>
+      <div class="price"><b>690 ₽</b><span><s>1&thinsp;990 ₽</s> дальше будет столько</span><span>один раз, навсегда твоё</span></div>
       <div class="slogan">{SLOGAN}</div>
     </div>
   </div>

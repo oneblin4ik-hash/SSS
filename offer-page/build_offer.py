@@ -19,8 +19,13 @@
 или блок удаляется целиком, страница без него не разваливается.
 
 ТАЙМЕРА НЕТ СОЗНАТЕЛЬНО. Crimson запрещает таймеры и «осталось 3 места».
-Правило «цена держится 48 часов после теста» из спеки оставлено обычной
-строкой рядом с кнопкой: это условие сделки, а не обратный отсчёт.
+Срочность держится одной строкой рядом с кнопкой — «бери, пока не подняли до
+1 990 ₽», — и ни на чём больше: ни отсчёта, ни счётчика мест, ни дедлайна.
+
+Зачёркнутые 1 990 ₽ стоят на обещании, что цена поднимется. Пока владелец
+собирается её поднять, всё честно; если решено оставить 690 ₽ навсегда,
+зачёркнутую цифру надо убрать — цена, по которой никогда не продавали, в роли
+«старой» это недостоверная реклама.
 
 Персонализация — те же плейсхолдеры, что у лид-магнита ({{name}}, {{level}}),
 чтобы бот подставлял значения из одного и того же JSON квиза.
@@ -171,7 +176,7 @@ def body() -> str:
 
         <div class="price">
           <span class="rub">690 ₽</span>
-          <span class="was"><s>1&thinsp;990 ₽</s> обычная цена</span>
+          <span class="was"><s>1&thinsp;990 ₽</s> дальше будет столько</span>
           <span class="once">один раз, навсегда твоё</span>
         </div>
 
@@ -179,7 +184,7 @@ def body() -> str:
 
         <div class="cta-row">
           <a class="btn" href="#">Забрать план — 690 ₽</a>
-          <p class="terms">690 ₽ держатся 48 часов после теста, дальше 1&thinsp;990 ₽.<br>
+          <p class="terms">690 ₽ — стартовая цена. Бери, пока не подняли до 1&thinsp;990 ₽.<br>
           Оплата один раз, подписки нет.</p>
         </div>
       </div>
@@ -269,7 +274,10 @@ h1,h2{font-weight:800;letter-spacing:-.04em;line-height:1.04;text-wrap:balance}
 .offer h2{font-size:clamp(28px,3.4vw,38px);letter-spacing:-1.4px;max-width:16ch}
 .offer .sub{font-size:16px;color:#B4B4BA;margin-top:16px;max-width:52ch}
 
-.price{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;margin:32px 0 30px}
+.price{display:flex;align-items:baseline;column-gap:18px;row-gap:6px;flex-wrap:wrap;margin:32px 0 30px}
+/* Подпись «один раз» переносится на свою строку — так она не рвёт
+   пару «цена + зачёркнутая», которую читают одним взглядом. */
+.price .once{flex-basis:100%}
 .price .rub{font:800 clamp(48px,6vw,62px)/1 'Manrope',sans-serif;
   letter-spacing:-2.6px;color:var(--text)}
 .price .was{font-size:15px;color:var(--text-4)}

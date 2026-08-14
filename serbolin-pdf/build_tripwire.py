@@ -52,8 +52,13 @@ def day_page(day: int) -> tuple[str, str, theme.Page]:
     page = d["page"]
     star = c.emo("⭐") if d["star"] else ""
 
+    # Тёмные страницы — те, что читают и запоминают; светлые — те, что
+    # заполняют ручкой. Печатать сплошной чёрный лист и писать по нему
+    # нечем, поэтому рабочие бланки остаются белыми.
+    dark = d.get("dark", False)
     body = f"""
-<div class="sheet">
+<div class="sheet{' dark' if dark else ''}">
+  {'<div class="wedge"></div>' if dark else ''}
   {c.head(day)}
   {c.levels_bar(day)}
   <div class="content">
@@ -73,6 +78,7 @@ def day_page(day: int) -> tuple[str, str, theme.Page]:
 .tw h1 {{ margin-bottom: {page.base_pt * 0.34:.2f}pt; }}
 .tw .lead {{ color: {theme.INK_2}; font-size: {page.base_pt * 0.92:.2f}pt;
   line-height: 1.38; }}
+.sheet.dark .tw .lead {{ color: {theme.D_TEXT_2}; }}
 """ + d["css"]
 
     slug = f"tripvaer-{day:02d}-{_slug(d['title'])}"
@@ -81,7 +87,24 @@ def day_page(day: int) -> tuple[str, str, theme.Page]:
 
 # ─────────────────────────── обложка комплекта ───────────────────────────
 
-def cover_page() -> tuple[str, str, theme.Page]:
+def cover_page(variant: str = "horizon") -> tuple[str, str, theme.Page]:
+    """Обложка комплекта в одном из двух срезов базовой системы.
+
+    «Диагональный срез» — подпись Crimson: одна диагональ на композицию,
+    12–18° от вертикали. Система даёт три раскладки, и для обложки прямо
+    называет «Клин слева» («Герой товара, обложка»). Но её демо — альбомная
+    карточка 1240×660, где клин занимает левую половину, а текст уходит в
+    правую. На вертикальной странице 130×231 тот же угол требует клина
+    шириной 38% листа, и колонка под текст остаётся 66 мм.
+
+    Поэтому здесь два варианта, оба честные:
+
+    * ``horizon``  — диагональ-горизонт, текст на всю ширину. Заголовок
+      крупнее, состав курса читается одной колонкой.
+    * ``wedge``    — «Клин слева» по букве системы. Текст в правой колонке,
+      заголовок мельче, зато композиция ровно та, что нарисована в разделе
+      «03 — Геометрия».
+    """
     page = theme.COVER
 
     rows = "".join(
@@ -91,8 +114,9 @@ def cover_page() -> tuple[str, str, theme.Page]:
         for lv in theme.LEVELS
     )
 
+    cls = {"horizon": "horizon", "wedge": "wedge-cover"}[variant]
     body = f"""
-<div class="sheet dark">
+<div class="sheet dark {cls}">
   <div class="diag"></div>
   <div class="inner">
     <div class="brand">
@@ -116,17 +140,40 @@ def cover_page() -> tuple[str, str, theme.Page]:
 
     css = theme.base_css(page) + f"""
 .sheet.dark {{ padding: 0; }}
-/* Алая диагональ — приём с обложки лид-магнита в хендоффе Crimson. */
-.diag {{
-  position: absolute; inset: 0;
-  background: {theme.ACCENT};
-  clip-path: polygon(0 62%, 100% 34%, 100% 100%, 0 100%);
-  opacity: 0.92;
-}}
-.diag::after {{
+.sheet.dark .wedge {{ display: none; }}   /* у обложки диагональ своя */
+
+/* Крупное алое поле — {theme.ACCENT_FIELD}, а не горячий {theme.ACCENT}:
+   так залита большая плашка в светлой сцене базовой системы. На четверти
+   листа горячий алый жжёт и отбирает акцент у меток. */
+.diag {{ position: absolute; inset: 0; background: {theme.ACCENT_FIELD}; }}
+
+/* Вариант 1 — «Горизонт»: диагональ 62% → 34%, угол 14° от горизонтали.
+   Градиента по алому здесь нет: раздел «Не так» базовой системы запрещает
+   градиенты на акценте прямым текстом. Поле держим плоским. */
+.horizon .diag {{ clip-path: polygon(0 62%, 100% 34%, 100% 100%, 0 100%); }}
+
+/* Вариант 2 — «Клин слева»: 46% сверху → 8% снизу. Смещение 38% от
+   130 мм — это 49 мм на высоту 231 мм, ровно 12° от вертикали, нижняя
+   граница диапазона системы. Полоса {theme.ACCENT_DEEP} вдоль среза —
+   приём из тёмной демо-сцены, она даёт клину глубину. */
+.wedge-cover .diag {{ clip-path: polygon(0 0, 46% 0, 8% 100%, 0 100%); }}
+.wedge-cover .diag::after {{
   content: ""; position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(11,11,12,0) 40%, rgba(11,11,12,0.55) 100%);
+  background: {theme.ACCENT_DEEP}; opacity: .55;
+  clip-path: polygon(36% 0, 46% 0, 8% 100%, -2% 100%);
 }}
+/* Текст целиком уходит правее клина: в самой широкой точке он занимает
+   60 мм, колонка начинается с 64 мм. */
+.wedge-cover .inner {{ padding-left: 64mm; }}
+.wedge-cover h1 {{ font-size: {page.base_pt * 2.15:.2f}pt; }}
+.wedge-cover .sub {{ max-width: 100%; }}
+.wedge-cover .brand {{ margin-bottom: 10mm; }}
+/* Свободное место уходит не в один провал перед ценой, а разводит состав
+   курса и цену: список уровней опускается к нижней трети, где клин уже
+   сузился, и вся правая колонка читается сплошным столбцом. */
+.wedge-cover .levels-list {{ margin-top: auto; margin-bottom: 13mm; }}
+.wedge-cover .bottom {{ margin-top: 0; }}
+.wedge-cover .price b {{ font-size: {page.base_pt * 2.0:.2f}pt; }}
 .inner {{
   position: relative;
   height: 100%;
@@ -188,7 +235,8 @@ h1 {{
   color: {theme.D_TEXT};
 }}
 """
-    return render.document(css, body, COURSE), "tripvaer-00-oblozhka", page
+    slug = "tripvaer-00-oblozhka" + ("" if variant == "horizon" else f"-{variant}")
+    return render.document(css, body, COURSE), slug, page
 
 
 # ─────────────────────────── сборка ───────────────────────────
@@ -196,14 +244,16 @@ h1 {{
 def main() -> None:
     args = sys.argv[1:]
     if not args:                       # без аргументов — весь комплект
-        want_cover, nums = True, list(range(1, 15))
+        covers, nums = ["horizon"], list(range(1, 15))
     else:
-        want_cover = "cover" in args
+        covers = [v for v in ("horizon", "wedge") if v in args]
+        if "cover" in args:
+            covers = ["horizon", "wedge"]   # обе раскладки на выбор владельцу
         nums = [int(a) for a in args if a.isdigit()]
 
     with render.Renderer() as r:
-        if want_cover:
-            html, slug, page = cover_page()
+        for variant in covers:
+            html, slug, page = cover_page(variant)
             print("  ", r.render(html, slug, page).name)
         for n in nums:
             html, slug, page = day_page(n)

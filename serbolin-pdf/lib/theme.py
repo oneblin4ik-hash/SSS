@@ -60,6 +60,11 @@ ACCENT_LIGHT = "#E8323A"   # алый в светлой схеме
 ACCENT_DEEP = "#9E1319"    # eyebrow-метки на бумаге
 ACCENT_SOFT = "rgba(216,35,42,0.10)"
 ACCENT_EDGE = "rgba(216,35,42,0.45)"
+# Крупные алые поля — клин обложки, заливка в половину листа. Базовая система
+# в светлой сцене («Демо 02 — медиа-лендинг») заливает блок 44%×56% именно
+# #B01A20, а не #D8232A: горячий алый на такой площади начинает жечь глаза и
+# съедает акцент у меток, которые обязаны оставаться самым ярким на странице.
+ACCENT_FIELD = "#B01A20"
 
 # ─────────────────────────── геометрия ───────────────────────────
 
@@ -163,9 +168,89 @@ html, body {{
   overflow: hidden;
   background: {SURFACE};
 }}
-.sheet.dark {{ background: {VOID}; color: {D_TEXT_2}; }}
 /* Многостраничный документ: каждый .sheet — отдельный лист. */
 .sheet + .sheet {{ break-before: page; }}
+
+/* ── тёмный лист ───────────────────────────────────────────────
+   Базовая система Crimson («Один акцент, пять темнот») задаёт для
+   тёмной сцены холст #0B0B0C, плитку #131315 и карточку #1B1B1E.
+   Алый остаётся ровно одним акцентом: метки, чекбоксы, клин. Красный
+   текст абзацами и вторая акцентная краска запрещены прямо в разделе
+   «Не так». */
+.sheet.dark {{ background: {VOID}; color: {D_TEXT_2}; }}
+.sheet.dark h1, .sheet.dark h2, .sheet.dark h3 {{ color: {D_TEXT}; }}
+.sheet.dark b, .sheet.dark strong {{ color: {D_TEXT}; }}
+.sheet.dark .eyebrow {{ color: {ACCENT_HI}; }}
+.sheet.dark .eyebrow.muted {{ color: {D_TEXT_4}; }}
+/* На бумаге приглушённый текст — {INK_4}, на тёмном ту же роль играет
+   {D_TEXT_3}, а не {D_TEXT_4}: на #0B0B0C серый 6B6B72 даёт 4.2:1 и мелкие
+   пояснения перестают читаться. Метки шапки и подвала остаются на {D_TEXT_4} —
+   там 6–7pt и роль другая. */
+.sheet.dark .muted, .sheet.dark .small.muted {{ color: {D_TEXT_3}; }}
+.sheet.dark .lead {{ color: {D_TEXT_2}; }}
+
+.sheet.dark .head {{ border-bottom-color: {D_LINE}; }}
+.sheet.dark .head .left {{ color: {ACCENT_HI}; }}
+.sheet.dark .head .right {{ color: {D_TEXT_4}; }}
+
+.sheet.dark .levels .lv .bar {{ background: rgba(255,255,255,0.10); }}
+.sheet.dark .levels .lv.done .bar {{ background: {ACCENT_EDGE}; }}
+.sheet.dark .levels .lv.now .bar {{ background: {ACCENT}; }}
+.sheet.dark .levels .lv .cap {{ color: {D_TEXT_4}; }}
+.sheet.dark .levels .lv.now .cap {{ color: {ACCENT_HI}; }}
+
+.sheet.dark .lvchip {{ color: {ACCENT_HI}; }}
+
+.sheet.dark .card {{ background: {PLATE}; border-color: {D_LINE}; }}
+.sheet.dark .note {{ background: {PLATE}; }}
+.sheet.dark .note .eyebrow {{ color: {ACCENT_HI}; }}
+.sheet.dark .pull {{ color: {D_TEXT}; }}
+
+.sheet.dark .check {{ color: {D_TEXT_2}; }}
+.sheet.dark .fill {{ border-bottom-color: rgba(255,255,255,0.32); }}
+
+.sheet.dark th {{ color: {D_TEXT_4}; border-bottom-color: {D_LINE}; }}
+.sheet.dark td {{ border-bottom-color: {D_LINE}; }}
+.sheet.dark td.k {{ color: {D_TEXT_4}; }}
+.sheet.dark tr.filled td {{ background: {PLATE}; }}
+
+.sheet.dark .foot {{ border-top-color: {D_LINE}; }}
+.sheet.dark .foot .ci {{ color: {D_TEXT_4}; }}
+.sheet.dark .foot .pg {{ color: {D_TEXT_4}; }}
+.sheet.dark .foot .pg b {{ color: {ACCENT_HI}; }}
+
+.sheet.dark .numlist .tx {{ color: {D_TEXT_2}; }}
+
+/* Срез слева — след «Клина слева» с обложки, приведённый к рабочей
+   странице. Два сознательных отступления, оба вынужденные форматом:
+
+   1. Ширина в миллиметрах, а не в процентах. В процентах один и тот же
+      клин на A4 шире, чем поле страницы (11% от 210 мм — это 23 мм при
+      поле 19 мм), и подпись уровня уезжает на алое.
+   2. Угол ~1.6°, а не 12–18°. Настоящий клин на вертикальном листе
+      обязан быть шириной в треть страницы: 12° на высоту 231 мм — это
+      49 мм смещения. Такой клин уместен на обложке, где текст уходит в
+      правую колонку, но не на странице, которую читают в одну колонку.
+      Полный угол живёт на обложке, здесь остаётся его кромка.
+
+   Полоса {ACCENT_DEEP} вдоль среза — приём из тёмной демо-сцены базовой
+   системы, она даёт кромке глубину. */
+.sheet.dark .wedge {{
+  position: absolute; inset: 0; pointer-events: none;
+  background: {ACCENT};
+  clip-path: polygon(0 0, 9mm 0, 2.5mm 100%, 0 100%);
+  z-index: -1;   /* поверх фона листа, но под текстом */
+}}
+.sheet.dark .wedge::after {{
+  content: ""; position: absolute; inset: 0;
+  background: {ACCENT_DEEP}; opacity: .55;
+  clip-path: polygon(6mm 0, 9mm 0, 2.5mm 100%, 0 100%);
+}}
+/* Лист — свой контекст наложения, иначе z-index: -1 у клина утащил бы его
+   под фон страницы и клин просто исчез. Трогать position у .head / .foot
+   нельзя: подвал прибит absolute к низу листа, и relative его роняет
+   в поток — страница уезжает вниз на высоту подвала. */
+.sheet.dark {{ isolation: isolate; }}
 
 /* ── типографика ───────────────────────────────────────────── */
 

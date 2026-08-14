@@ -133,8 +133,12 @@ table.day td.tm, table.day td.nt { height: 9mm; }
 
 
 def day2() -> dict:
-    # Цвета колонок совпадают с секторами тарелки выше и держатся внутри
-    # одного акцента: алый → полупрозрачный алый → нейтральный серый.
+    # Единственная страница уровня «Диагностика», которую не заполняют, а
+    # запоминают: принцип тарелки должен всплывать в голове у плиты. Поэтому
+    # она тёмная — см. правило светлых и тёмных листов в build_tripwire.py.
+    #
+    # Цвета секторов совпадают с полосками колонок ниже и держатся внутри
+    # одного акцента: алый → приглушённый алый → нейтральный серый.
     # Третий цвет в палитре не заводим, это правило Crimson.
     cols = [
         ("Белок", "#D8232A", ["Курица, индейка", "Рыба", "Творог, яйца",
@@ -142,8 +146,8 @@ def day2() -> dict:
         ("Овощи", "rgba(216,35,42,0.45)", ["Салат", "Помидоры, огурцы",
                                            "Брокколи", "Капуста",
                                            "Замороженная смесь"]),
-        ("Энергия", "#C9CCD4", ["Рис", "Гречка", "Картошка",
-                                "Паста", "Хлеб"]),
+        ("Энергия", theme.D_TEXT_4, ["Рис", "Гречка", "Картошка",
+                                     "Паста", "Хлеб"]),
     ]
     cells = "".join(
         f"<div class='col'><div class='ch' style='background:{col}'></div>"
@@ -155,23 +159,24 @@ def day2() -> dict:
     return {
         "title": "Тарелка из трёх элементов",
         "page": PHONE,
+        "dark": True,
         "lead": "Запретов не будет, калории не считаем — на старте это лишний "
                 "слой, его бросают на четвёртый день. Вместо него один принцип, "
                 "который закрывает 80% работы.",
         "body": f"""
 <div class="plate">
   <svg viewBox="0 0 120 120" width="34mm" height="34mm" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="60" cy="60" r="57" fill="none" stroke="#E0E0E0" stroke-width="2"/>
-    <path d="M60 60 L60 3 A57 57 0 0 1 109 88 Z" fill="rgba(216,35,42,0.16)"/>
-    <path d="M60 60 L109 88 A57 57 0 0 1 11 88 Z" fill="rgba(158,19,25,0.10)"/>
-    <path d="M60 60 L11 88 A57 57 0 0 1 60 3 Z" fill="#F2F3F6"/>
-    <path d="M60 60 L60 3 M60 60 L109 88 M60 60 L11 88" stroke="#FFFFFF" stroke-width="2.4"/>
-    <circle cx="60" cy="60" r="57" fill="none" stroke="#D8232A" stroke-width="1.4"/>
+    <circle cx="60" cy="60" r="57" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="2"/>
+    <path d="M60 60 L60 3 A57 57 0 0 1 109 88 Z" fill="rgba(216,35,42,0.62)"/>
+    <path d="M60 60 L109 88 A57 57 0 0 1 11 88 Z" fill="rgba(158,19,25,0.52)"/>
+    <path d="M60 60 L11 88 A57 57 0 0 1 60 3 Z" fill="#26262A"/>
+    <path d="M60 60 L60 3 M60 60 L109 88 M60 60 L11 88" stroke="{theme.VOID}" stroke-width="2.4"/>
+    <circle cx="60" cy="60" r="57" fill="none" stroke="{theme.ACCENT_HI}" stroke-width="1.4"/>
   </svg>
   <div class="plegend">
-    <div><span class="dot" style="background:rgba(216,35,42,0.55)"></span>Белок</div>
-    <div><span class="dot" style="background:rgba(158,19,25,0.35)"></span>Овощи</div>
-    <div><span class="dot" style="background:#E7E9EF"></span>Энергия</div>
+    <div><span class="dot" style="background:rgba(216,35,42,0.62)"></span>Белок</div>
+    <div><span class="dot" style="background:rgba(158,19,25,0.52)"></span>Овощи</div>
+    <div><span class="dot" style="background:#26262A"></span>Энергия</div>
   </div>
 </div>
 
@@ -190,18 +195,18 @@ def day2() -> dict:
 
 <p class="small muted mt">Отметь, какого элемента у тебя обычно не хватает.
 Почти у всех это белок: <b>{c.fill(34)}</b></p>""",
-        "css": """
-.plate { display: flex; gap: 5mm; align-items: center; margin-top: 4mm; }
-.plegend { font-size: 0.85em; line-height: 1.9; }
-.plegend .dot { display: inline-block; width: 2.6mm; height: 2.6mm; border-radius: 999px;
-  margin-right: 1.8mm; vertical-align: middle; }
-.cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3mm; margin-top: 5mm; }
-.cols .ch { height: 1.1mm; border-radius: 999px; }
-.cols .cn { font-weight: 700; color: #292F3B; font-size: 0.9em; margin: 1.6mm 0 1mm; }
-.cols .it { font-size: 0.82em; color: #4A4A4A; line-height: 1.65; }
-.ex { margin-top: 5mm; font-size: 0.86em; }
-.ex .eyebrow { display: block; margin-bottom: 1.4mm; }
-.mt { margin-top: 4mm; }
+        "css": f"""
+.plate {{ display: flex; gap: 5mm; align-items: center; margin-top: 4mm; }}
+.plegend {{ font-size: 0.85em; line-height: 1.9; color: {theme.D_TEXT_2}; }}
+.plegend .dot {{ display: inline-block; width: 2.6mm; height: 2.6mm; border-radius: 999px;
+  margin-right: 1.8mm; vertical-align: middle; }}
+.cols {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3mm; margin-top: 5mm; }}
+.cols .ch {{ height: 1.1mm; border-radius: 999px; }}
+.cols .cn {{ font-weight: 700; color: {theme.D_TEXT}; font-size: 0.9em; margin: 1.6mm 0 1mm; }}
+.cols .it {{ font-size: 0.82em; color: {theme.D_TEXT_2}; line-height: 1.65; }}
+.ex {{ margin-top: 5mm; font-size: 0.86em; }}
+.ex .eyebrow {{ display: block; margin-bottom: 1.4mm; }}
+.mt {{ margin-top: 4mm; }}
 """,
     }
 

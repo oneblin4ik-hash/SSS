@@ -32,8 +32,11 @@ def levels_bar(day: int) -> str:
 
     Повторяет логику прогресса из app/kviz-serbolin.html: пройденные уровни
     закрашены приглушённо, текущий — в полную силу.
+
+    День 0 — страница «Перед стартом»: курс ещё не начат, поэтому пустыми
+    остаются все четыре сегмента.
     """
-    lv_now = theme.level_for_day(day)["n"]
+    lv_now = theme.level_for_day(day)["n"] if day else 0
     cells = []
     for lv in theme.LEVELS:
         if lv["n"] < lv_now:

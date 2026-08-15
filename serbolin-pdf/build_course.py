@@ -28,6 +28,7 @@ import io
 import pathlib
 import re
 
+from data import intro as intro_data
 from lib import theme
 
 ROOT = pathlib.Path(__file__).parent
@@ -135,12 +136,26 @@ def font_css() -> str:
     return "".join(faces)
 
 
-def sheet_png(day: int) -> str:
-    """Растр страницы дня в base64. A4 ужимаем — на экране он вдвое шире нужного."""
+def sheet_slug(day: int) -> str:
+    """Имя растра страницы дня.
+
+    Для дня 0 маска `tripvaer-00-*` поймала бы ещё и обложки комплекта
+    (`-oblozhka`, `-oblozhka-horizon`), поэтому у него имя задано явно.
+    """
+    if day == 0:
+        return "tripvaer-00-pered-startom"
     hits = sorted(PREVIEW.glob(f"tripvaer-{day:02d}-*.png"))
     if not hits:
         raise SystemExit(f"нет превью дня {day} — прогони preview.py")
-    raw = hits[0].read_bytes()
+    return hits[0].stem
+
+
+def sheet_png(day: int) -> str:
+    """Растр страницы дня в base64. A4 ужимаем — на экране он вдвое шире нужного."""
+    path = PREVIEW / f"{sheet_slug(day)}.png"
+    if not path.exists():
+        raise SystemExit(f"нет превью {path.name} — прогони preview.py")
+    raw = path.read_bytes()
     try:
         from PIL import Image
         img = Image.open(io.BytesIO(raw))
@@ -246,6 +261,23 @@ img{{max-width:100%;display:block}}
 .task .eyebrow{{display:block;margin-bottom:10px}}
 .task p{{margin:0;color:var(--text-2)}}
 
+/* ── «Перед стартом»: три опоры, врезка, подпись ─────────────────── */
+.pillars{{margin-top:28px;display:flex;flex-direction:column;gap:16px}}
+.pillars .eyebrow{{display:block;margin-bottom:2px}}
+.pil{{display:flex;gap:14px;align-items:flex-start}}
+.pil .pn{{flex:0 0 24px;height:24px;border-radius:999px;background:var(--accent);
+  color:#fff;font:500 12px/24px 'JetBrains Mono',monospace;text-align:center}}
+.pil b{{display:block;margin-bottom:4px;font-size:17px}}
+.pil p{{margin:0;max-width:60ch}}
+.pullq{{margin:30px 0;padding:0 0 0 18px;border-left:3px solid var(--accent);
+  font:800 21px/1.32 'Manrope',sans-serif;letter-spacing:-.03em;
+  color:var(--text);max-width:44ch}}
+.after p{{margin:0 0 15px;max-width:66ch}}
+.sign{{margin-top:30px;padding-top:16px;border-top:1px solid var(--line-2);
+  font:800 17px/1.3 'Manrope',sans-serif;letter-spacing:-.02em;color:var(--text)}}
+.day.intro .chip{{background:transparent;border-color:var(--line-2);
+  color:var(--text-3)}}
+
 .sheet{{margin-top:34px}}
 .sheet .cap{{display:flex;justify-content:space-between;align-items:baseline;
   gap:16px;flex-wrap:wrap;margin-bottom:14px}}
@@ -302,7 +334,7 @@ JS = """
     if (next >= 0 && next < btns.length) show(btns[next].dataset.day);
   });
   var m = (location.hash || '').match(/^#den-(\\d+)$/);
-  show(m && +m[1] >= 1 && +m[1] <= 14 ? m[1] : '1');
+  show(m && +m[1] >= 0 && +m[1] <= 14 ? m[1] : '0');
 })();
 """
 
@@ -312,8 +344,47 @@ def avatar_b64() -> str:
     return "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
 
 
+def intro_pane() -> str:
+    """Первая вкладка — та же страница «Перед стартом», что и в PDF.
+
+    Текст берётся из data/intro.py, второй копии здесь нет: разъедется.
+    """
+    d = intro_data
+    rows = "".join(
+        f'<div class="pil"><span class="pn">{i}</span>'
+        f"<div><b>{name}</b><p>{text}</p></div></div>"
+        for i, (name, text) in enumerate(d.PILLARS, 1)
+    )
+    after = "".join(f"<p>{para}</p>" for para in d.AFTER)
+    slug = sheet_slug(0)
+    return f"""
+<article class="day intro" data-day="0">
+  <span class="chip">Перед стартом</span>
+  <div class="dn">До первого урока</div>
+  <h2>{d.TITLE}</h2>
+  <div class="lesson">
+    <p>{d.LEAD}</p>
+    <p>{d.BEFORE}</p>
+  </div>
+  <div class="pillars">
+    <span class="eyebrow">{d.PILLARS_LABEL}</span>
+    {rows}
+  </div>
+  <blockquote class="pullq">{d.PULL}</blockquote>
+  <div class="after">{after}</div>
+  <div class="sign">{d.SIGN}</div>
+  <div class="sheet">
+    <div class="cap"><span class="eyebrow">Страница дня</span></div>
+    <div class="frame"><img src="{sheet_png(0)}" alt="Страница «Перед стартом»"></div>
+    <div class="file mono">{slug}.pdf — бот присылает её перед первым уроком</div>
+  </div>
+</article>"""
+
+
 def build_body(days: list[dict]) -> str:
-    rail = []
+    rail = ['<div class="lvl"><div class="days">'
+            '<button data-day="0"><span class="d">00</span>'
+            '<span>Перед стартом</span></button></div></div>']
     for lv in theme.LEVELS:
         lo, hi = lv["days"]
         items = "".join(
@@ -327,12 +398,12 @@ def build_body(days: list[dict]) -> str:
             f'<div class="days">{items}</div></div>'
         )
 
-    panes = []
+    panes = [intro_pane()]
     for d in days:
         lv = theme.level_for_day(d["n"])
         lesson = "".join(f"<p>{p}</p>" for p in d["lesson"])
         star = " " + emoji("⭐") if d["star"] else ""
-        slug = sorted(PREVIEW.glob(f'tripvaer-{d["n"]:02d}-*.png'))[0].stem
+        slug = sheet_slug(d["n"])
         panes.append(f"""
 <article class="day" data-day="{d['n']}">
   <span class="chip">{emoji(lv["emoji"])} Уровень {lv["n"]} · {lv["name"]}</span>
@@ -366,7 +437,7 @@ def build_body(days: list[dict]) -> str:
     присылает урок, задание и страницу дня в PDF. Вечером — чек-ин одной
     кнопкой: сделал или не вышло.</p>
     <div class="meta">
-      <div class="price">{PRICE}<span><s>{PRICE_WAS}</s> дальше будет столько · {PRICE} — стартовая цена, бери пока не подняли</span></div>
+      <div class="price">{PRICE}<span><s>{PRICE_WAS}</s> дальше будет столько · бери, пока не подняли</span></div>
       <div class="slogan">{SLOGAN}</div>
     </div>
   </div>

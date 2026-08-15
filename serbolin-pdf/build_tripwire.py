@@ -8,6 +8,7 @@
     python3 build_tripwire.py            # обложка + все 14 дней
     python3 build_tripwire.py 12         # только день 12
     python3 build_tripwire.py cover      # только обложка
+    python3 build_tripwire.py intro      # только «Перед стартом»
 
 Результат — out/tripvaer-00-oblozhka.pdf и out/tripvaer-01..14-<слаг>.pdf
 """
@@ -15,6 +16,7 @@ import sys
 import unicodedata
 
 from data import days as days_data
+from data import intro as intro_data
 from lib import components as c
 from lib import render, theme
 
@@ -88,6 +90,100 @@ def day_page(day: int) -> tuple[str, str, theme.Page]:
 
     slug = f"tripvaer-{day:02d}-{_slug(d['title'])}"
     return render.document(css, body, f"День {day}. {d['title']}"), slug, page
+
+
+# ─────────────────────────── страница «Перед стартом» ───────────────────────
+
+def intro_page() -> tuple[str, str, theme.Page]:
+    """Лист, который бот присылает между обложкой и первым уроком.
+
+    Единственная страница комплекта, где нет ни таблицы, ни чек-листа: её
+    читают один раз перед стартом. Поэтому она тёмная — по тому же правилу,
+    что дни 2, 6 и 10.
+
+    Полоса прогресса пустая во всех четырёх сегментах: курс ещё не начат,
+    и это видно с первого взгляда. Подвала с «Сделал / Не вышло» тоже нет —
+    отмечать пока нечего.
+
+    Материал не сочинён с нуля: «нестыковка вместо слабости» — из урока
+    дня 1, две реакции на плохой вечер — из протокола срыва (день 12),
+    «Терпение + Дисциплина = Результат» — фирменная фраза из брендбука.
+    """
+    page = theme.PHONE
+    d = intro_data
+
+    rows = "".join(
+        f'<div class="pil"><div class="pn">{i}</div>'
+        f"<div><b>{name}</b><p>{text}</p></div></div>"
+        for i, (name, text) in enumerate(d.PILLARS, 1)
+    )
+    after = "".join(f"<p>{para}</p>" for para in d.AFTER)
+
+    body = f"""
+<div class="sheet dark">
+  <div class="wedge"></div>
+  {c.head(0, left="Перед стартом", right="0 / 14")}
+  {c.levels_bar(0)}
+  <div class="content">
+    <div class="tw">
+      <h1>{d.TITLE}</h1>
+      <p class="lead">{d.LEAD}</p>
+    </div>
+
+    <p>{d.BEFORE}</p>
+
+    <div class="sec">
+      <div class="eyebrow">{d.PILLARS_LABEL}</div>
+      {rows}
+    </div>
+
+    {c.pull(d.PULL)}
+    {after}
+
+    <div class="sign">{d.SIGN}</div>
+  </div>
+</div>"""
+
+    css = theme.base_css(page) + f"""
+.tw {{ margin-top: {page.base_pt * 0.35:.2f}pt; }}
+.tw h1 {{ margin-bottom: {page.base_pt * 0.34:.2f}pt; }}
+.tw .lead {{ color: {theme.D_TEXT_2}; font-size: {page.base_pt * 0.92:.2f}pt;
+  line-height: 1.38; }}
+/* Интерлиньяж плотнее базовых 1.55: лист сплошной прозой, и на 1.55
+   последний абзац уезжает за поля. 1.42 на 10.5pt — всё ещё комфортно
+   для чтения с телефона. */
+.content p {{ line-height: 1.42; }}
+.tw {{ margin-bottom: 2.2mm; }}
+.sec {{ margin-top: 3mm; }}
+.sec .eyebrow {{ display: block; margin-bottom: 2.6mm; }}
+
+.pil {{ display: flex; gap: 3mm; margin-bottom: 2mm; }}
+.pil .pn {{
+  flex: 0 0 5mm; height: 5mm; border-radius: 999px;
+  background: {theme.ACCENT}; color: #fff;
+  font-family: {theme.FONT_STACK_MONO}; font-size: {page.base_pt * 0.66:.2f}pt;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 0.4mm;
+}}
+.pil b {{ display: block; margin-bottom: 0.8mm; }}
+.pil p {{ margin: 0; font-size: {page.base_pt * 0.85:.2f}pt; line-height: 1.38;
+  color: {theme.D_TEXT_2}; }}
+/* Врезка на этой странице зажата плотнее обычного: лист и так набит
+   сплошным текстом, а воздух вокруг неё съедает целую мысль. */
+.pull {{ margin-top: 3.4mm; margin-bottom: 3.4mm; }}
+
+/* Подпись вместо подвала: отмечать на этой странице нечего, но лист
+   должен закрываться, а не обрываться. */
+.sign {{
+  margin-top: 3.4mm; padding-top: 2.6mm;
+  border-top: 0.3mm solid rgba(255,255,255,0.28);
+  font-family: {theme.FONT_STACK_DISPLAY}; font-weight: 800;
+  font-size: {page.base_pt * 0.95:.2f}pt; letter-spacing: -0.03em;
+  color: {theme.D_TEXT};
+}}
+"""
+    return (render.document(css, body, "Перед стартом"),
+            "tripvaer-00-pered-startom", page)
 
 
 # ─────────────────────────── обложка комплекта ───────────────────────────
@@ -252,16 +348,21 @@ h1 {{
 def main() -> None:
     args = sys.argv[1:]
     if not args:                       # без аргументов — весь комплект
-        covers, nums = [DEFAULT_COVER], list(range(1, 15))
+        covers, nums, want_intro = [DEFAULT_COVER], list(range(1, 15)), True
     else:
         covers = [v for v in ("horizon", "wedge") if v in args]
         if "cover" in args:
             covers = ["wedge", "horizon"]   # обе раскладки, чтобы сравнить
-        nums = [int(a) for a in args if a.isdigit()]
+        # «Перед стартом» — день 0, поэтому и аргумент 0.
+        nums = [int(a) for a in args if a.isdigit() and a != "0"]
+        want_intro = "intro" in args or "0" in args
 
     with render.Renderer() as r:
         for variant in covers:
             html, slug, page = cover_page(variant)
+            print("  ", r.render(html, slug, page).name)
+        if want_intro:
+            html, slug, page = intro_page()
             print("  ", r.render(html, slug, page).name)
         for n in nums:
             html, slug, page = day_page(n)

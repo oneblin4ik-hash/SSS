@@ -270,6 +270,7 @@ serbolin-pdf/         Crimson Print — 17 PDF воронки
   lib/render.py       HTML → PDF, детектор переполнения
   lib/profile.py      профиль из квиза; ИМТ, тип срыва, прогноз
   data/days.py        содержимое 14 страниц
+  data/intro.py       текст страницы «Перед стартом» — общий для PDF и интерактива
   build_tripwire.py   обложка + 14 страниц дней
   build_lead_magnet.py персональный PDF после квиза
   build_course.py     интерактив: 14 уроков + страницы дней, всё в одном HTML

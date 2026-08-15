@@ -1,0 +1,434 @@
+<title>Воронка Серболина в Telegram</title>
+<style>
+/*FONTS*/
+
+/* Одна визуальная система с продуктом: тёмная сцена Crimson, один алый
+   акцент. Тему не переключаем сознательно — инструкция должна выглядеть
+   так же, как то, что по ней собирается. */
+:root{
+  --void:#0B0B0C; --plate:#131315; --card:#1B1B1E; --raised:#26262A;
+  --accent:#D8232A; --accent-hi:#F4363D; --accent-deep:#9E1319;
+  --text:#FFFFFF; --text-2:#C8C8CE; --text-3:#9A9AA0; --text-4:#6B6B72;
+  --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.12);
+  --r:14px; --r-lg:20px;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0; background:var(--void); color:var(--text-2);
+  font:400 16.5px/1.62 'Inter','Manrope',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:'Manrope',sans-serif;font-weight:800;color:var(--text);
+  letter-spacing:-.035em;line-height:1.08;margin:0;text-wrap:balance}
+b,strong{color:var(--text);font-weight:700}
+a{color:var(--accent-hi);text-decoration:none;border-bottom:1px solid rgba(244,54,61,.35)}
+a:hover{border-bottom-color:var(--accent-hi)}
+a:focus-visible{outline:2px solid var(--accent-hi);outline-offset:3px;border-radius:2px}
+code,.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:500;
+  font-size:.88em;font-variant-numeric:tabular-nums}
+code{background:var(--card);padding:.12em .4em;border-radius:5px;color:var(--text)}
+
+.eyebrow{font:600 11px/1 'Inter',sans-serif;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--accent-hi)}
+
+/* ── шапка: «Клин слева», подпись системы ───────────────────────── */
+.hero{position:relative;overflow:hidden;isolation:isolate;
+  padding:60px 32px 52px;border-bottom:1px solid var(--line)}
+.hero::before{content:"";position:absolute;inset:0;z-index:-1;
+  background:#B01A20;clip-path:polygon(0 0,26% 0,5% 100%,0 100%)}
+.hero::after{content:"";position:absolute;inset:0;z-index:-1;
+  background:var(--accent-deep);opacity:.55;
+  clip-path:polygon(20% 0,26% 0,5% 100%,-1% 100%)}
+.hero-in{max-width:1060px;margin:0 auto;padding-left:30%}
+.hero h1{font-size:clamp(32px,5.2vw,54px);margin:14px 0 0}
+.hero p{max-width:56ch;margin:18px 0 0;color:var(--text-2)}
+
+.wrap{max-width:1060px;margin:0 auto;padding:40px 32px 72px;
+  display:grid;grid-template-columns:210px 1fr;gap:48px;align-items:start}
+
+/* ── боковая навигация по фазам ─────────────────────────────────── */
+.rail{position:sticky;top:24px;display:flex;flex-direction:column;gap:2px}
+.rail a{display:flex;gap:10px;padding:8px 10px;border-radius:9px;
+  color:var(--text-3);font-size:14px;border:0;transition:background .15s,color .15s}
+.rail a:hover{background:var(--plate);color:var(--text)}
+.rail .n{font-family:'JetBrains Mono',monospace;font-size:12px;
+  color:var(--text-4);flex:0 0 16px}
+.rail .sep{height:1px;background:var(--line);margin:10px 10px}
+
+main{min-width:0;display:flex;flex-direction:column;gap:46px}
+section{scroll-margin-top:24px}
+section>h2{font-size:clamp(23px,3vw,30px);margin-bottom:6px}
+section>.eyebrow{display:block;margin-bottom:12px}
+p{margin:0 0 14px;max-width:68ch}
+p:last-child{margin-bottom:0}
+
+/* ── шаги внутри фазы ───────────────────────────────────────────── */
+ol.steps{list-style:none;counter-reset:s;margin:20px 0 0;padding:0;
+  display:flex;flex-direction:column;gap:20px}
+ol.steps>li{counter-increment:s;display:flex;gap:14px}
+ol.steps>li::before{content:counter(s);flex:0 0 26px;height:26px;
+  border-radius:999px;background:var(--raised);color:var(--text);
+  font:500 12px/26px 'JetBrains Mono',monospace;text-align:center}
+ol.steps>li>div{min-width:0;flex:1}
+ol.steps b{display:block;margin-bottom:4px}
+
+ul.plain{margin:10px 0 0;padding-left:20px;display:flex;
+  flex-direction:column;gap:7px}
+ul.plain li{max-width:64ch}
+
+/* ── врезки ─────────────────────────────────────────────────────── */
+.note{background:var(--plate);border-radius:var(--r);padding:18px 20px;
+  border-left:3px solid var(--accent);margin:20px 0 0}
+.note .eyebrow{display:block;margin-bottom:8px}
+.note p{margin-bottom:10px}
+
+.warn{background:rgba(216,35,42,.10);border:1px solid rgba(216,35,42,.42);
+  border-radius:var(--r);padding:18px 20px;margin:20px 0 0}
+.warn .eyebrow{display:block;margin-bottom:8px}
+
+/* ── таблицы ────────────────────────────────────────────────────── */
+.tw{overflow-x:auto;margin:20px 0 0;border:1px solid var(--line);
+  border-radius:var(--r)}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:14.5px}
+th,td{text-align:left;padding:11px 16px;border-bottom:1px solid var(--line);
+  vertical-align:top}
+th{font:600 11px/1.3 'Inter',sans-serif;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--text-4);background:var(--plate)}
+tr:last-child td{border-bottom:0}
+td.f{font-family:'JetBrains Mono',monospace;font-size:12.5px;
+  color:var(--text);white-space:nowrap}
+
+/* ── блок кода ──────────────────────────────────────────────────── */
+pre{margin:16px 0 0;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);padding:15px 17px;overflow-x:auto;
+  font:500 13px/1.6 'JetBrains Mono',monospace;color:var(--text-2)}
+pre code{background:none;padding:0;font-size:inherit}
+
+/* ── итоговый чек-лист ──────────────────────────────────────────── */
+.check{display:flex;flex-direction:column;gap:10px;margin:20px 0 0}
+.check div{display:flex;gap:12px;align-items:flex-start}
+.check .box{flex:0 0 17px;height:17px;margin-top:3px;border-radius:4px;
+  border:1.5px solid var(--accent)}
+
+.foot{max-width:1060px;margin:0 auto;padding:0 32px 64px;
+  color:var(--text-4);font-size:14px}
+.foot .in{border-top:1px solid var(--line);padding-top:22px;max-width:68ch}
+
+@media (max-width:880px){
+  .hero{padding:34px 20px 36px}
+  .hero::before{clip-path:polygon(0 0,11% 0,2% 100%,0 100%)}
+  .hero::after{clip-path:polygon(8% 0,11% 0,2% 100%,0 100%)}
+  .hero-in{padding-left:14%}
+  .wrap{grid-template-columns:1fr;gap:28px;padding:26px 20px 56px}
+  .rail{position:static;flex-direction:row;flex-wrap:wrap;gap:6px}
+  .rail a{background:var(--plate)}
+  .rail .sep{display:none}
+  .foot{padding:0 20px 48px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="hero">
+  <div class="hero-in">
+    <div class="eyebrow">Инструкция владельцу</div>
+    <h1>Как собрать воронку<br>в Telegram</h1>
+    <p>Всё содержимое готово: квиз, персональный разбор, 16 страниц курса и
+    тексты уроков. Осталось соединить это ботом. Ниже — порядок действий и
+    места, где обычно ломается.</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="rail">
+    <a href="#odin"><span class="n">01</span><span>Один бот</span></a>
+    <a href="#gotovo"><span class="n">02</span><span>Что готово</span></a>
+    <div class="sep"></div>
+    <a href="#f0"><span class="n">A</span><span>Завести</span></a>
+    <a href="#f1"><span class="n">B</span><span>Выложить квиз</span></a>
+    <a href="#f2"><span class="n">C</span><span>Собрать бота</span></a>
+    <a href="#f3"><span class="n">D</span><span>Платежи</span></a>
+    <a href="#f4"><span class="n">E</span><span>Курс</span></a>
+    <a href="#f5"><span class="n">F</span><span>Проверка</span></a>
+    <div class="sep"></div>
+    <a href="#minimum"><span class="n">↓</span><span>Минимум</span></a>
+    <a href="#checklist"><span class="n">✓</span><span>Чек-лист</span></a>
+  </nav>
+
+  <main>
+
+    <section id="odin">
+      <span class="eyebrow">Ответ на вопрос</span>
+      <h2>Один бот, не два</h2>
+      <p>Ты спрашивал, нужны ли отдельные боты под лид-магнит и под курс.
+      Не нужны, и вот почему.</p>
+      <p><b>Человек не должен искать второго бота после оплаты.</b> Это самое
+      дорогое место всей воронки: он уже заплатил, а его отправляют куда-то
+      ещё. Часть людей туда просто не дойдёт — и вернуть их будет нечем, кроме
+      как писать руками.</p>
+      <p><b>Оплата и результат теста должны лежать в одной базе.</b> Курс
+      подстраивается под тип срыва из квиза: уровень в оффере, приписка про
+      врача, зона риска в догреве. Два бота — это две базы и сшивание людей по
+      <code>user_id</code> вручную.</p>
+      <p><b>Платёжный провайдер подключается к боту, а не к аккаунту.</b> Два
+      бота — два подключения ЮKassa, два комплекта настроек, два места, где
+      что-то может отвалиться.</p>
+      <div class="note">
+        <span class="eyebrow">Что получается</span>
+        <p>Один <code>@Serbolin_bot</code>. Внутри него Mini App с тестом,
+        разбор, оффер, оплата и 14 дней курса. Одна ссылка в рекламе, одна
+        база, один платёжный контур.</p>
+      </div>
+    </section>
+
+    <section id="gotovo">
+      <span class="eyebrow">Инвентаризация</span>
+      <h2>Что уже сделано</h2>
+      <p>Всё это лежит в репозитории и работает. Разработчику отдаётся как
+      есть — сочинять заново ничего не нужно.</p>
+      <div class="tw"><table>
+        <thead><tr><th>Что</th><th>Файл</th><th>Роль в воронке</th></tr></thead>
+        <tbody>
+          <tr><td>Квиз</td><td class="f">quiz-test/kviz-serbolin.html</td>
+              <td>Mini App, 14 экранов, отдаёт JSON боту</td></tr>
+          <tr><td>Разбор</td><td class="f">serbolin-pdf/build_lead_magnet.py</td>
+              <td>Персональный PDF, собирается на каждого человека</td></tr>
+          <tr><td>Комплект курса</td><td class="f">serbolin-pdf/out/tripvaer-*.pdf</td>
+              <td>16 файлов: обложка, «Перед стартом», 14 дней</td></tr>
+          <tr><td>Тексты уроков</td><td class="f">source/tripvaer-14-dney-Serbolin.md</td>
+              <td>14 уроков и заданий — их шлёт бот</td></tr>
+          <tr><td>Тексты бота</td><td class="f">source/bot-integratsiya-Serbolin.md</td>
+              <td>Приветствие, День 0, оффер, догрев, чек-ины</td></tr>
+          <tr><td>Страница оффера</td><td class="f">offer-page/out/offer-template.html</td>
+              <td>С плейсхолдерами <code>{{name}}</code>, <code>{{level}}</code></td></tr>
+        </tbody>
+      </table></div>
+      <div class="warn">
+        <span class="eyebrow">Одна важная разница</span>
+        <p><b>16 страниц курса — статичные файлы.</b> Загружаются один раз,
+        дальше бот шлёт их мгновенно.</p>
+        <p style="margin-bottom:0"><b>Разбор после теста — собирается на
+        лету.</b> В нём имя, вес, ИМТ и прогноз конкретного человека, готовым
+        файлом его не сделать. Значит на сервере бота должны стоять Python,
+        Playwright и Chromium. Это не «плюс одна библиотека», это требование к
+        хостингу — скажи разработчику сразу.</p>
+      </div>
+    </section>
+
+    <section id="f0">
+      <span class="eyebrow">Фаза A · полчаса, делаешь сам</span>
+      <h2>Завести то, без чего нельзя начать</h2>
+      <ol class="steps">
+        <li><div><b>Создать бота в BotFather</b>
+          <code>/newbot</code> → имя «Эдуард Серболин» → юзернейм. Полученный
+          токен никому не пересылай в переписке: он даёт полный доступ к боту.
+          Отдай разработчику через менеджер паролей или заведи ему отдельного
+          тестового бота.</div></li>
+        <li><div><b>Оформить приём денег</b>
+          Самозанятость или ИП, потом ЮKassa. Здесь же — касса: при продаже
+          физлицу нужен фискальный чек, ЮKassa умеет его пробивать, но это
+          отдельно включается. Пункт не пропускается: без чека продажа
+          физлицу вне закона.</div></li>
+        <li><div><b>Решить, где живёт бот</b>
+          Нужен сервер, который не спит: у курса джобы на 8:00 и 20:00 каждый
+          день. Бесплатные тарифы с засыпанием не подходят. Минимум — VPS
+          с 2 ГБ памяти, потому что там же будет крутиться Chromium для
+          персонального разбора.</div></li>
+        <li><div><b>Оформить карточку бота</b>
+          Аватар (<code>serbolin-pdf/assets/avatar.png</code>), описание,
+          картинка описания. Это первое, что видит человек из рекламы, и
+          это делается за пять минут.</div></li>
+      </ol>
+    </section>
+
+    <section id="f1">
+      <span class="eyebrow">Фаза B · час</span>
+      <h2>Выложить квиз</h2>
+      <p>Mini App — один html-файл без сборки. Ему нужен только https.</p>
+      <ol class="steps">
+        <li><div><b>Залить на Cloudflare Pages</b>
+          У тебя уже есть Cloudflare в проекте, так что аккаунт заводить не
+          надо. Подойдёт и Netlify, и nginx на том же VPS — разницы нет.</div></li>
+        <li><div><b>Проверить с телефона</b>
+          Открой ссылку в мобильном браузере и пройди тест целиком. Если
+          шрифты уехали на системные — значит Google Fonts не догрузились,
+          и надо вшить их в файл, как это сделано в демке.</div></li>
+        <li><div><b>Отдать URL разработчику</b>
+          Он вписывает его в кнопку «Пройти тест».</div></li>
+      </ol>
+      <div class="note">
+        <span class="eyebrow">Грабли, на которые наступают все</span>
+        <p style="margin-bottom:0">Результат теста приходит боту через
+        <code>sendData</code>, и это работает <b>только</b> если Mini App
+        открыт кнопкой обычной клавиатуры. Из кнопки меню или инлайн-кнопки
+        в канале <code>sendData</code> молча не сработает — там нужен
+        отдельный эндпоинт на сервере. Начинай с клавиатурной кнопки, это
+        короткий путь.</p>
+      </div>
+    </section>
+
+    <section id="f2">
+      <span class="eyebrow">Фаза C · основная работа разработчика</span>
+      <h2>Собрать бота</h2>
+      <p>Спека <code>bot-integratsiya-Serbolin.md</code> написана как ТЗ:
+      там схема связки, все тексты дословно, структура базы и скелет на
+      aiogram. Отдай её целиком, пересказывать не надо.</p>
+      <p>Порядок сборки, чтобы каждый кусок можно было проверить отдельно:</p>
+      <ol class="steps">
+        <li><div><b>Приветствие и кнопка теста</b>
+          <code>/start</code> ловит источник из диплинка и пишет его в базу.
+          Дальше видно, откуда приходят те, кто платит.</div></li>
+        <li><div><b>Приём результата</b>
+          Обработчик <code>web_app_data</code> сохраняет JSON целиком.
+          Сохранять весь payload, а не разобранные поля: пригодится, когда
+          захочешь считать что-то, о чём сейчас не думаешь.</div></li>
+        <li><div><b>День 0 — четыре вопроса в чате</b>
+          Не в Mini App, а обычным диалогом. Дальше карточка стартовой
+          точки.</div></li>
+        <li><div><b>Персональный разбор</b>
+          Бот вызывает <code>build_lead_magnet.py</code> с полученным JSON и
+          шлёт готовый PDF. Рендер занимает секунду-две — поставь его в
+          очередь, иначе при одновременном наплыве сервер ляжет.</div></li>
+        <li><div><b>Оффер</b>
+          С подстановкой уровня по типу срыва. Отдельным сообщением после
+          карточки, не в одном.</div></li>
+        <li><div><b>Догрев</b>
+          Четыре сообщения плюс длинный хвост. Все джобы отменяются при
+          оплате — если человек заплатил и всё равно получил «бери, пока не
+          подняли», это выглядит как неуважение.</div></li>
+      </ol>
+      <div class="warn">
+        <span class="eyebrow">Не потерять</span>
+        <p style="margin-bottom:0">Если в ответах теста пришло
+        <code>heart</code> или <code>diab</code> — в разбор обязательно
+        добавляется абзац про разрешение врача. Он скопирован из квиза
+        дословно и лежит в спеке. Это не вежливость, а граница
+        ответственности тренера.</p>
+      </div>
+    </section>
+
+    <section id="f3">
+      <span class="eyebrow">Фаза D</span>
+      <h2>Платежи</h2>
+      <p>Telegram Payments с провайдером ЮKassa. Подключается в BotFather,
+      токен провайдера прописывается в бота.</p>
+      <ul class="plain">
+        <li>Цена лежит одной константой: <code>PRICE_KOP = 69_000</code>.
+        Когда будешь поднимать до 1 990 ₽, поменять надо <b>в двух местах
+        сразу</b> — в счёте и в зачёркнутой цифре на витрине. Иначе человек
+        увидит «690 вместо 1 990» на странице и 1 990 на экране оплаты.</li>
+        <li>Обязательно провести тестовый платёж настоящей картой на
+        настоящую сумму и вернуть его. Тестовый режим ЮKassa не ловит часть
+        проблем с чеком.</li>
+        <li>После успешной оплаты: отметить в базе, отменить весь догрев,
+        спросить часовой пояс, запустить курс.</li>
+      </ul>
+    </section>
+
+    <section id="f4">
+      <span class="eyebrow">Фаза E</span>
+      <h2>Курс: 14 дней на автомате</h2>
+      <ol class="steps">
+        <li><div><b>Загрузить 16 PDF один раз</b>
+          Отправь каждый файл боту, поймай в ответе <code>file_id</code> и
+          сохрани в базу. Дальше бот шлёт документ по этому идентификатору —
+          мгновенно, без повторной загрузки и без расхода трафика. Заново
+          файлы придётся заливать, только если ты их перевыпустишь.</div></li>
+        <li><div><b>Спросить часовой пояс при оплате</b>
+          Кнопками, один раз. Без этого человек из Владивостока получит урок
+          в час ночи, а из Калининграда — в шесть утра.</div></li>
+        <li><div><b>Утро: урок, задание, страница дня</b>
+          Три сообщения в 8:00 по его времени. Порядок важен: сначала текст,
+          потом PDF — файл без объяснения выглядит как спам.</div></li>
+        <li><div><b>Вечер: чек-ин в 20:00</b>
+          Две кнопки, «Сделал» и «Не вышло». Ответ на «Не вышло» ни при каких
+          условиях не должен звучать как упрёк — на 12-й день стоит протокол
+          срыва, весь построенный на том, что один вечер не равен провалу.
+          Если бот в первую неделю попрекал, на двенадцатый день ему уже не
+          поверят.</div></li>
+        <li><div><b>День 14 и дальше</b>
+          Итоги, честные границы курса, приглашение на бесплатный разбор.
+          Касания на 15, 18 и 25-й день с предложением ведения.</div></li>
+      </ol>
+      <div class="warn">
+        <span class="eyebrow">Где ломается чаще всего</span>
+        <p style="margin-bottom:0">Расписание уроков должно храниться в базе,
+        а не в памяти процесса. Сервер перезапустится — по закону подлости в
+        ночь с третьего на четвёртый день, — и люди, купившие курс, просто
+        перестанут получать уроки. Узнаешь об этом от них, а не от
+        мониторинга. При старте бот обязан вычитать из базы, кому какой день
+        сегодня положен, и досыпать пропущенное.</p>
+      </div>
+    </section>
+
+    <section id="f5">
+      <span class="eyebrow">Фаза F · перед тем как звать людей</span>
+      <h2>Пройти всё на себе</h2>
+      <p>Целиком, от рекламной ссылки до четырнадцатого дня. Не кусками.</p>
+      <ul class="plain">
+        <li>Пройди тест как женщина с противопоказаниями по сердцу — проверь,
+        что абзац про врача появился.</li>
+        <li>Пройди как мужчина — проверь окончания. Род в текстах
+        переключается автоматически, и это первое, что ломается при правках.</li>
+        <li>Заплати сам, настоящей картой. Проверь, что догрев замолчал.</li>
+        <li>Переведи часы на сервере вперёд и прогони 14 дней за час — так
+        видно и дыры в расписании, и опечатки в уроках.</li>
+        <li>Нажми «Не вышло» и прочитай ответ вслух. Если звучит с укором —
+        переписать.</li>
+      </ul>
+    </section>
+
+    <section id="minimum">
+      <span class="eyebrow">Если хочется быстрее</span>
+      <h2>Минимальный запуск</h2>
+      <p>Полная сборка — это неделя работы разработчика. Проверить спрос
+      можно раньше, за выходные, если временно отрезать автоматику.</p>
+      <div class="tw"><table>
+        <thead><tr><th>Оставить</th><th>Отложить</th></tr></thead>
+        <tbody>
+          <tr><td>Кнопка теста и приём результата</td>
+              <td>День 0 диалогом — задать вопросы руками в личке</td></tr>
+          <tr><td>Персональный разбор PDF</td>
+              <td>Очередь рендера — на первых десятках хватит без неё</td></tr>
+          <tr><td>Оффер и оплата</td>
+              <td>Догрев — первые дни писать самому</td></tr>
+          <tr><td>Курс: 16 PDF по <code>file_id</code></td>
+              <td>Чек-ины — добавить на второй неделе</td></tr>
+        </tbody>
+      </table></div>
+      <p style="margin-top:16px">Смысл в том, чтобы как можно раньше увидеть
+      три цифры: <b>дошёл до конца теста</b>, <b>сделал День 0</b>,
+      <b>оплатил</b>. Если тест бросают — смотри, на каком экране. Если
+      делают День 0, но не платят — вопрос к офферу, а не к трафику.</p>
+    </section>
+
+    <section id="checklist">
+      <span class="eyebrow">Перед запуском</span>
+      <h2>Чек-лист</h2>
+      <div class="check">
+        <div><span class="box"></span><span>Бот создан, аватар и описание на месте</span></div>
+        <div><span class="box"></span><span>Самозанятость или ИП оформлены, ЮKassa подключена, чек пробивается</span></div>
+        <div><span class="box"></span><span>Квиз лежит на https и проходится с телефона</span></div>
+        <div><span class="box"></span><span>Результат теста доезжает до бота и пишется в базу целиком</span></div>
+        <div><span class="box"></span><span>Разбор собирается на лету, Chromium на сервере стоит</span></div>
+        <div><span class="box"></span><span>Абзац про врача появляется при <code>heart</code> и <code>diab</code></span></div>
+        <div><span class="box"></span><span>Тестовый платёж прошёл настоящей картой и возвращён</span></div>
+        <div><span class="box"></span><span>Догрев отменяется при оплате</span></div>
+        <div><span class="box"></span><span>16 PDF загружены, <code>file_id</code> сохранены</span></div>
+        <div><span class="box"></span><span>Часовой пояс спрашивается при оплате</span></div>
+        <div><span class="box"></span><span>Расписание в базе и переживает перезапуск сервера</span></div>
+        <div><span class="box"></span><span>Вся воронка пройдена на себе от начала до конца</span></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="foot">
+  <div class="in">
+    Тексты бота, структура базы и скелет на aiogram — в
+    <span class="mono">serbolin-pdf/source/bot-integratsiya-Serbolin.md</span>.
+    Контракт полей персонального разбора — в шапке
+    <span class="mono">build_lead_magnet.py</span>. Оба файла написаны как ТЗ,
+    их можно отдавать разработчику без сопроводительного письма.
+  </div>
+</footer>

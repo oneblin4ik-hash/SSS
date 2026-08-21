@@ -5,13 +5,6 @@ const DIFF_META = {
   epic:   { label: "Эпический",  color: "var(--crimson)" }
 };
 
-const STAT_COLORS_Q = {
-  strength:   "var(--stat-strength)",
-  discipline: "var(--stat-discipline)",
-  energy:     "var(--stat-energy)",
-  mental:     "var(--stat-mental)"
-};
-
 const STAT_LABELS_Q = {
   strength: "Сила", discipline: "Дисциплина", energy: "Здоровье", mental: "Интеллект"
 };
@@ -50,7 +43,7 @@ const QuestModal = ({ quest, onSave, onDelete, onClose }) => {
     <div className="ss-modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="ss-modal">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, margin: 0 }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", fontSize: 22, margin: 0 }}>
             {isNew ? "Новый квест" : "Редактировать"}
           </h2>
           <button className="ss-ghost-btn" onClick={onClose} style={{ padding: "4px 8px" }}>✕</button>
@@ -128,7 +121,7 @@ const QuestModal = ({ quest, onSave, onDelete, onClose }) => {
 const QuestItem = ({ quest, onToggle, onEdit, onDelete }) => {
   const diff = DIFF_META[quest.difficulty] || DIFF_META.medium;
   const xp = SSEngine.xpFor(quest, quest.streak || 0);
-  const statColor = STAT_COLORS_Q[quest.stat] || "var(--text-3)";
+  const statColor = "var(--text-3)";
   const statLabel = STAT_LABELS_Q[quest.stat] || quest.stat;
 
   return (

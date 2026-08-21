@@ -272,7 +272,7 @@ const Sidebar = ({ tab, setTab, profile }) => {
         <div className="ss-profile-card">
           <Avatar size={56} level={profile.level || 1} pct={pct} stage={profile.avatarStage || 0} />
           <div style={{ marginTop: 10, width: "100%" }}>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center" }}>{profile.name}</div>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, textAlign: "center" }}>{profile.name}</div>
             <div style={{ fontSize: 10, color: "var(--text-3)", textAlign: "center", fontStyle: "italic" }}>{profile.class}</div>
           </div>
           <div style={{ marginTop: 10, width: "100%" }}>

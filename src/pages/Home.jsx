@@ -47,7 +47,7 @@ const HomePage = ({ profile, stats, quests, wallet, eventLog, completeQuest, und
           </div>
           <div style={{ textAlign: "center", width: "100%" }}>
             <div className="eyebrow" style={{ marginBottom: 6 }}>форма {profile.avatarStage}/5</div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--text-1)", marginBottom: 12 }}>{profile.class}</div>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--text-1)", marginBottom: 12 }}>{profile.class}</div>
             <XPBar pct={pct} />
             <div className="num" style={{ display: "flex", justifyContent: "space-between", marginTop: 5, fontSize: 10, color: "var(--text-3)" }}>
               <span>Lv {profile.level}</span>
@@ -69,15 +69,14 @@ const HomePage = ({ profile, stats, quests, wallet, eventLog, completeQuest, und
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
                   <span style={{ fontSize: 12, color: "var(--text-2)" }}>{meta.label}</span>
                   <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span className="num" style={{ fontSize: 12, color: meta.color }}>{s.value}</span>
+                    <span className="num" style={{ fontSize: 12, color: "var(--text-2)" }}>{s.value}</span>
                     <span style={{ fontSize: 10, color: "var(--text-3)" }}>{tier}</span>
                   </span>
                 </div>
                 <div className="xp-bar" style={{ height: 5 }}>
                   <span style={{
                     width: `${s.value}%`,
-                    background: `linear-gradient(90deg, color-mix(in oklab, ${meta.color} 60%, transparent), ${meta.color})`,
-                    boxShadow: `0 0 8px color-mix(in oklab, ${meta.color} 60%, transparent)`
+                    background: meta.color
                   }} />
                 </div>
               </div>
@@ -90,7 +89,7 @@ const HomePage = ({ profile, stats, quests, wallet, eventLog, completeQuest, und
           {/* Wallet balance */}
           <div className="ss-card" style={{ padding: 20 }}>
             <div className="eyebrow" style={{ marginBottom: 8 }}>кошелёк · цель месяца</div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 500, color: "var(--accent)", marginBottom: 12 }}>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", color: "var(--accent)", marginBottom: 12 }}>
               {formatRub(wallet.balance)}
             </div>
             <XPBar pct={walletPct} />
@@ -104,7 +103,7 @@ const HomePage = ({ profile, stats, quests, wallet, eventLog, completeQuest, und
           {bossQuest ? (
             <div className="ss-card ss-card-glow" style={{ padding: 20 }}>
               <div className="eyebrow" style={{ marginBottom: 8, color: "var(--accent)" }}>◆ босс недели</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 15, marginBottom: 8 }}>{bossQuest.title}</div>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 8 }}>{bossQuest.title}</div>
               <XPBar pct={bossQuest.done ? 100 : 0} />
               <div className="num" style={{ marginTop: 5, fontSize: 10, color: "var(--text-3)" }}>
                 {bossQuest.done ? "✓ Выполнен" : `+${bossQuest.xp} XP за победу`}
@@ -154,7 +153,7 @@ const HomePage = ({ profile, stats, quests, wallet, eventLog, completeQuest, und
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     {meta.color && (
-                      <span style={{ fontSize: 10, color: meta.color }}>{meta.label}</span>
+                      <span style={{ fontSize: 10, color: "var(--text-3)" }}>{meta.label}</span>
                     )}
                     <span style={{ fontSize: 10, color: "var(--text-3)" }}>🔥 {q.streak || 0}</span>
                   </div>

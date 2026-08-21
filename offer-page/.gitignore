@@ -1,0 +1,5 @@
+# Собранные страницы и скриншоты — воспроизводятся через build_offer.py.
+out/
+shots-*.png
+shot-*.png
+__pycache__/

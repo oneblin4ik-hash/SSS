@@ -1,7 +1,9 @@
+// Ступени различаются насыщенностью одного алого, а не металлами:
+// бронза-серебро-золото — гамма прежней системы, у Crimson её нет.
 const TIER_META = {
-  bronze: { label: "Бронза", color: "#c08a4a" },
-  silver: { label: "Серебро", color: "#b8c0cc" },
-  gold:   { label: "Золото", color: "oklch(0.78 0.15 75)" }
+  bronze: { label: "Бронза",  color: "var(--text-4)" },
+  silver: { label: "Серебро", color: "var(--text-2)" },
+  gold:   { label: "Золото",  color: "var(--accent)" }
 };
 
 const PATHS = ["Все", "Сила", "Дисциплина", "Контент", "Бизнес", "Интеллект", "Тело", "Скрытые"];
@@ -51,7 +53,7 @@ const AchievementCard = ({ ach }) => {
 
       {/* Title */}
       <div style={{
-        fontFamily: "var(--font-display)", fontSize: 13, textAlign: "center",
+        fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, textAlign: "center",
         color: ach.done ? "var(--text-1)" : "var(--text-3)",
         marginBottom: 6, lineHeight: 1.3, minHeight: 34
       }}>

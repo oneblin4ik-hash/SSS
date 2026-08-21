@@ -34,7 +34,7 @@ const CharacterPage = ({ profile, stats, achievements }) => {
           <div className="ss-card" style={{ padding: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
             <Avatar size={220} level={profile.level} pct={pct} stage={profile.avatarStage} />
             <div style={{ textAlign: "center", marginTop: 16 }}>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 500, marginBottom: 4 }}>{profile.name}</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 4 }}>{profile.name}</div>
               <div style={{ fontStyle: "italic", color: "var(--text-2)", fontSize: 14, marginBottom: 8 }}>«{profile.title}»</div>
               <div className="num" style={{ fontSize: 10, color: "var(--accent)", letterSpacing: "0.2em", textTransform: "uppercase" }}>{profile.class}</div>
             </div>
@@ -64,7 +64,7 @@ const CharacterPage = ({ profile, stats, achievements }) => {
                       width: 48, height: 48, borderRadius: "50%", overflow: "hidden",
                       border: isCurrent ? "2px solid var(--accent)" : "2px solid var(--line-2)",
                       opacity: isActive ? 1 : 0.28,
-                      boxShadow: isCurrent ? "0 0 14px var(--amber-glow)" : "none",
+                      boxShadow: "none",
                       transition: "all 0.2s"
                     }}>
                       <WarriorPortrait stage={i} />
@@ -91,21 +91,20 @@ const CharacterPage = ({ profile, stats, achievements }) => {
                 <div key={key} style={{ marginBottom: 24 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
                     <div>
-                      <div style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--text-1)", marginBottom: 2 }}>
+                      <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18, color: "var(--text-1)", marginBottom: 2 }}>
                         {meta.label}
                       </div>
                       <div style={{ fontSize: 11, color: "var(--text-3)" }}>{desc}</div>
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
-                      <div style={{ fontFamily: "var(--font-display)", fontSize: 24, color: meta.color, lineHeight: 1 }}>{s.value}</div>
+                      <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", fontSize: 24, color: "var(--text-1)", lineHeight: 1 }}>{s.value}</div>
                       <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{tier}</div>
                     </div>
                   </div>
                   <div className="xp-bar" style={{ height: 8, marginTop: 8 }}>
                     <span style={{
                       width: `${s.value}%`,
-                      background: `linear-gradient(90deg, color-mix(in oklab, ${meta.color} 60%, transparent), ${meta.color})`,
-                      boxShadow: `0 0 8px color-mix(in oklab, ${meta.color} 60%, transparent)`
+                      background: meta.color
                     }} />
                   </div>
                 </div>
@@ -119,19 +118,19 @@ const CharacterPage = ({ profile, stats, achievements }) => {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               <div style={{ textAlign: "center", padding: "16px 8px", background: "var(--bg-2)", borderRadius: 10, border: "1px solid var(--line-1)" }}>
                 <div style={{ fontSize: 22, marginBottom: 6 }}>🔥</div>
-                <div className="num" style={{ fontSize: 22, fontFamily: "var(--font-display)", color: "var(--accent)", lineHeight: 1 }}>{profile.streak}</div>
+                <div className="num" style={{ fontSize: 22, fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", color: "var(--accent)", lineHeight: 1 }}>{profile.streak}</div>
                 <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4 }}>дней стрика</div>
               </div>
               <div style={{ textAlign: "center", padding: "16px 8px", background: "var(--bg-2)", borderRadius: 10, border: "1px solid var(--line-1)" }}>
                 <div style={{ fontSize: 22, marginBottom: 6 }}>✦</div>
-                <div className="num" style={{ fontSize: 22, fontFamily: "var(--font-display)", color: "var(--accent)", lineHeight: 1 }}>
+                <div className="num" style={{ fontSize: 22, fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", color: "var(--accent)", lineHeight: 1 }}>
                   {achievements ? achievements.filter(a => a.done).length : 0}/{achievements ? achievements.length : 30}
                 </div>
                 <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4 }}>достижений</div>
               </div>
               <div style={{ textAlign: "center", padding: "16px 8px", background: "var(--bg-2)", borderRadius: 10, border: "1px solid var(--line-1)" }}>
                 <div style={{ fontSize: 22, marginBottom: 6 }}>⚔</div>
-                <div className="num" style={{ fontSize: 18, fontFamily: "var(--font-display)", color: "var(--accent)", lineHeight: 1 }}>
+                <div className="num" style={{ fontSize: 18, fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--accent)", lineHeight: 1 }}>
                   {((profile.totalXp || 0) / 1000).toFixed(1)}к
                 </div>
                 <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4 }}>всего XP</div>

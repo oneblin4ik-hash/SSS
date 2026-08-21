@@ -1,0 +1,5 @@
+# Кэш библиотек и офлайн-копия index.html для shot_dashboard.py.
+# Оба имени точные, без масок: маска в корне уже один раз чуть не съела
+# версионируемые serbolin-pdf/out/*.pdf.
+.vendor-cache/
+.preview-index.html

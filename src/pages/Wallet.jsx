@@ -20,7 +20,7 @@ const EntryModal = ({ entry, onSave, onDelete, onClose }) => {
     <div className="ss-modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="ss-modal">
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-          <h2 style={{ fontFamily:"var(--font-display)", fontSize:22, margin:0 }}>Редактировать запись</h2>
+          <h2 style={{ fontFamily:"var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", fontSize:22, margin:0 }}>Редактировать запись</h2>
           <button className="ss-ghost-btn" onClick={onClose} style={{ padding:"4px 8px" }}>✕</button>
         </div>
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
@@ -167,8 +167,10 @@ const WalletPage = ({ wallet, setWallet, logEvent }) => {
           {editingBalance
             ? <input className="ss-input" type="number" value={balanceInput}
                 onChange={e => setBalanceInput(e.target.value)}
-                style={{ fontFamily:"var(--font-display)", fontSize:28, marginBottom:16 }} autoFocus />
-            : <div style={{ fontFamily:"var(--font-display)", fontSize:48, fontWeight:500, color:"var(--accent)", lineHeight:1, marginBottom:16 }}>
+                style={{ fontFamily:"var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", fontSize:28, marginBottom:16 }} autoFocus />
+            : // Баланс — нейтральная величина, а не тревога. Алый на этой странице
+            // занят расходом; если красить им ещё и баланс, различие пропадает.
+            <div style={{ fontFamily:"var(--font-display)", fontSize:48, fontWeight:800, letterSpacing:"-0.04em", color:"var(--text-1)", lineHeight:1, marginBottom:16 }}>
                 {formatRub(wallet.balance||0)}
               </div>
           }
@@ -182,7 +184,7 @@ const WalletPage = ({ wallet, setWallet, logEvent }) => {
         {/* Income */}
         <div className="ss-card" style={{ padding:20 }}>
           <div className="eyebrow" style={{ marginBottom:12 }}>Доход / месяц</div>
-          <div style={{ fontFamily:"var(--font-display)", fontSize:26, color:"var(--leaf)", lineHeight:1 }}>
+          <div style={{ fontFamily:"var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", fontSize:26, color:"var(--leaf)", lineHeight:1 }}>
             {formatRub(monthIncome)}
           </div>
           <div style={{ fontSize:11, color:"var(--text-3)", marginTop:8 }}>
@@ -193,7 +195,7 @@ const WalletPage = ({ wallet, setWallet, logEvent }) => {
         {/* Expense */}
         <div className="ss-card" style={{ padding:20 }}>
           <div className="eyebrow" style={{ marginBottom:12 }}>Расход / месяц</div>
-          <div style={{ fontFamily:"var(--font-display)", fontSize:26, color:"var(--crimson)", lineHeight:1 }}>
+          <div style={{ fontFamily:"var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", fontSize:26, color:"var(--crimson)", lineHeight:1 }}>
             {formatRub(monthExpense)}
           </div>
           <div style={{ fontSize:11, color:"var(--text-3)", marginTop:8 }}>
@@ -265,7 +267,7 @@ const WalletPage = ({ wallet, setWallet, logEvent }) => {
                 <div style={{ fontSize:12, color:"var(--text-1)" }}>{e.cat}</div>
                 {e.note && <div style={{ fontSize:10, color:"var(--text-3)", marginTop:1 }}>{e.note}</div>}
               </div>
-              <span style={{ fontFamily:"var(--font-display)", fontSize:16,
+              <span style={{ fontFamily:"var(--font-display)", fontWeight: 700, fontSize:16,
                 color: e.type==="income" ? "var(--leaf)" : "var(--crimson)", flexShrink:0 }}>
                 {e.type==="income"?"+":"−"}{formatRub(e.amount)}
               </span>

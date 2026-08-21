@@ -37,8 +37,9 @@ build_context(profile) — одно место, где значение полу
     {{plan_date}}     дата достижения, «16 сентября»
 
 БЛОЧНЫЕ (готовый HTML, подставляется целиком):
-    {{type_emoji}} {{type_name}} {{type_level}}   шапка блока «Твой тип»
-    {{type_block}}      полный текст одного из четырёх типов, <p> подряд
+    {{type_emoji}} {{type_name}} {{type_sub}}   шапка блока «Твой старт»
+    {{type_block}}      текст одного из трёх типов плюс блок по цели
+    {{zone_line}}       абзац про беспокоящую зону
     {{health_warning}}  абзац про врача — НЕПУСТОЙ, если в hl есть
                         heart или diab. Формулировка скопирована из
                         квиза дословно и меняться не должна.
@@ -72,10 +73,12 @@ SLOGAN = "Терпение + Дисциплина = Результат"
 
 def build_context(p: Profile) -> dict[str, str]:
     """Собирает значения всех плейсхолдеров для одного человека."""
-    t = T.TYPES[p.type_n]
+    t = T.TYPES[p.type_code]
     plan = p.plan
 
-    type_block = "".join(f"<p>{par}</p>" for par in t["paragraphs"](p))
+    # Тип даёт опыт, цель подмешивает свой блок — ровно как в R.diag() квиза.
+    paragraphs = t["paragraphs"](p) + T.GOAL_BLOCK[p.goal](p)
+    type_block = "".join(f"<p>{par}</p>" for par in paragraphs)
     dont_items = "".join(f"<li>{x}</li>" for x in T.dont_list(p))
 
     warning = T.health_warning(p)
@@ -107,7 +110,8 @@ def build_context(p: Profile) -> dict[str, str]:
 
         "type_emoji": t["emoji"],
         "type_name": t["name"],
-        "type_level": t["level"],
+        "type_sub": t["sub"],
+        "zone_line": T.zone_line(p),
         "type_block": type_block,
         "health_warning": health_warning,
     }
@@ -159,6 +163,7 @@ def page_template() -> str:
     <p>{{{{task_text}}}}</p>
     <p class="small muted">Оценку формы по картинке считай грубым ориентиром.
     Это не измерение, привязываться к ней не надо.</p>
+    <p>{{{{zone_line}}}}</p>
     {{{{health_warning}}}}
     <div class="note">
       <span class="eyebrow">Что изменится первым</span>
@@ -173,12 +178,12 @@ def page_template() -> str:
   <div class="head"><div class="left">Блок 2</div>
     <div class="right">{{{{name}}}}</div></div>
   <div class="content">
-    <h2>Твой тип — почему не получалось раньше</h2>
+    <h2>Твой старт — с чего начинаешь именно ты</h2>
     <div class="seal">
       <div class="ico"><span class="emo">{{{{type_emoji}}}}</span></div>
       <div>
         <div class="tn">{{{{type_name}}}}</div>
-        <div class="tl">{{{{type_level}}}}</div>
+        <div class="tl">{{{{type_sub}}}}</div>
       </div>
     </div>
     {{{{type_block}}}}
@@ -381,27 +386,39 @@ def _translit(text: str) -> str:
 
 
 # Демонстрационный экземпляр. Галина — персонаж из спеки лид-магнита:
-# рост 165, вес 78 → 66, тип 4 «Начинаю и срываюсь», без противопоказаний.
+# рост 165, вес 78 → 66. По новой оси — «Рывками»: занималась, бросила,
+# но последний раз меньше месяца назад, то есть паузы как таковой нет.
 GALINA = Profile(
     name="Галина", gender="f", age=36, height=165,
-    weight_now=78, weight_goal=66, goal="loss",
-    form_now=4, form_goal=2, life="some", attempts="4-6",
-    break_point="2-3w", breakers=["even", "stress"], health=[],
+    weight_now=78, weight_goal=66, goal="loss", zone="belly",
+    form_now=4, form_goal=2,
+    exp="quit", last="m1", did="home", mins="30", freq="2", health=[],
 )
 
 # Второй экземпляр — проверка обязательного абзаца про врача и мужского рода.
+# Плюс второй тип: никогда не занимался, стартует с нуля.
 PETR = Profile(
     name="Пётр", gender="m", age=52, height=178,
-    weight_now=96, weight_goal=88, goal="loss",
-    form_now=5, form_goal=3, life="sit", attempts="2-3",
-    break_point="week", breakers=["tired", "time"], health=["heart", "knee"],
+    weight_now=96, weight_goal=88, goal="loss", zone="back",
+    form_now=5, form_goal=3,
+    exp="never", mins="15", freq="1", health=["heart", "knee"],
+)
+
+# Третий — возвращение после длинной паузы и цель «в форму»: проверяет
+# ветку quit и блок GOAL_BLOCK["tone"], которые иначе нигде не рисуются.
+MARINA = Profile(
+    name="Марина", gender="f", age=29, height=170,
+    weight_now=63, weight_goal=61, goal="tone", zone="legs",
+    form_now=3, form_goal=5,
+    exp="quit", last="y1", did="gym", mins="45", freq="3", health=["back"],
 )
 
 
 def main() -> None:
     with render.Renderer() as r:
         for prof, slug in ((GALINA, "lid-magnit-demo-galina"),
-                           (PETR, "lid-magnit-demo-petr")):
+                           (PETR, "lid-magnit-demo-petr"),
+                           (MARINA, "lid-magnit-demo-marina")):
             print("  ", build(prof, slug, renderer=r).name)
         warnings = r.warnings
 

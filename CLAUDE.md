@@ -149,6 +149,8 @@ Storybook отсутствует, и заводить его некуда — с
 * `shots-dash/*.png` — восемь страниц дашборда (`python3 shot_dashboard.py`);
 * `serbolin-pdf/out/kurs-14-dney.html` — все 14 уроков с страницами дней
   одной кликабельной страницей (`python3 build_course.py`);
+* `serbolin-pdf/out/bot-simulyator.html` — весь курс так, как он придёт
+  в Telegram: покупка, 14 дней, чек-ины, допродажа (`python3 build_bot_sim.py`);
 * макеты дизайн-системы: `Crimson Funnel Kit.dc.html` в пакете хендоффа —
   секции «Компоненты вопроса», «Мобильный поток», «Бумага, а не лендинг».
 
@@ -274,6 +276,7 @@ serbolin-pdf/         Crimson Print — 17 PDF воронки
   build_tripwire.py   обложка + 14 страниц дней
   build_lead_magnet.py персональный PDF после квиза
   build_course.py     интерактив: 14 уроков + страницы дней, всё в одном HTML
+  build_bot_sim.py    симулятор чата с ботом: весь курс от покупки до финала
   preview.py          растр всех PDF для проверки глазами
 
 quiz-test/            Crimson Screen — квиз

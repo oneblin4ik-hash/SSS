@@ -432,8 +432,8 @@ def build_body(days: list[dict]) -> str:
       <div class="bt">Эдуард Серболин<span>онлайн-тренер</span></div>
     </div>
     <div class="eyebrow">Курс · 14 дней</div>
-    <h1>План<br>на первые 14 дней</h1>
-    <p class="sub">Один короткий урок в день и одно действие. Каждое утро бот
+    <h1>Первые шаги<br>к форме</h1>
+    <p class="sub">14 дней — с чего начать и как не бросить. Каждое утро бот
     присылает урок, задание и страницу дня в PDF. Вечером — чек-ин одной
     кнопкой: сделал или не вышло.</p>
     <div class="meta">
@@ -465,7 +465,7 @@ def main() -> None:
     page = (
         '<!doctype html><html lang="ru"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        "<title>План на первые 14 дней</title>"
+        "<title>Первые шаги к форме</title>"
         f"{style}</head><body>{body}<script>{JS}</script></body></html>"
     )
     full = OUT / "kurs-14-dney.html"
@@ -477,7 +477,7 @@ def main() -> None:
     # называется вкладка, и он ищется в первых 8 КБ файла.
     art = OUT / "kurs-14-dney-artifact.html"
     art.write_text(
-        "<title>План на первые 14 дней</title>\n"
+        "<title>Первые шаги к форме</title>\n"
         f"{style}\n{body}\n<script>{JS}</script>",
         encoding="utf-8",
     )

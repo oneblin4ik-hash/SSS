@@ -45,8 +45,7 @@ FONT_FILES = [
     ("JetBrains Mono", 500),
 ]
 
-PRICE = "690 ₽"
-PRICE_WAS = "1\u2009990 ₽"
+PRICE = "1\u2009890 ₽"
 SLOGAN = "Терпение + Дисциплина = Результат"
 
 
@@ -66,9 +65,19 @@ def cap(text: str) -> str:
     return text[:1].upper() + text[1:] if text else text
 
 
+EMOJI_RE = re.compile(
+    "([\U0001F300-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF])(?!\ufe0f)")
+
+
 def inline(text: str) -> str:
-    """**жирный** и экранированные подчёркивания спеки → HTML."""
+    """**жирный** и экранированные подчёркивания спеки → HTML.
+
+    Заодно каждому эмодзи дописывается VS16: без него браузер берёт
+    текстовое начертание из основного шрифта, и вместо цветной тарелки
+    выходит контурный значок.
+    """
     text = html.escape(text.strip())
+    text = EMOJI_RE.sub(lambda m: m.group(1) + "\ufe0f", text)
     text = text.replace("\\_", "_")
     text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
     return text
@@ -109,7 +118,18 @@ def parse() -> list[dict]:
             mode = None
         elif mode == "lesson" and ln.startswith(">"):
             para = ln.lstrip("> ").strip()
-            if para:
+            if not para:
+                continue
+            # Строки списка продуктов («• Курица») склеиваются в один абзац
+            # через перенос: в чате и на странице должен получиться столбик,
+            # а не десяток отдельных абзацев с интервалами между ними.
+            if para.startswith("•"):
+                item = inline(para.lstrip("• ").strip())
+                if cur["lesson"] and cur["lesson"][-1].startswith('<span class="li">'):
+                    cur["lesson"][-1] += f'<span class="li">{item}</span>'
+                else:
+                    cur["lesson"].append(f'<span class="li">{item}</span>')
+            else:
                 cur["lesson"].append(inline(para))
 
     if len(days) != 14:
@@ -254,6 +274,10 @@ img{{max-width:100%;display:block}}
 
 .lesson{{margin-top:26px;max-width:66ch}}
 .lesson p{{margin:0 0 15px}}
+/* Столбик продуктов: строки идут плотнее обычных абзацев, с алой точкой. */
+.lesson .li{{display:block;padding-left:16px;position:relative;line-height:1.75}}
+.lesson .li::before{{content:"";position:absolute;left:2px;top:.72em;width:5px;height:5px;
+  border-radius:999px;background:var(--accent)}}
 .lesson p:first-child{{font-size:19px;line-height:1.5;color:var(--text)}}
 
 .task{{margin-top:30px;background:var(--plate);border-radius:var(--r);
@@ -437,7 +461,7 @@ def build_body(days: list[dict]) -> str:
     присылает урок, задание и страницу дня в PDF. Вечером — чек-ин одной
     кнопкой: сделал или не вышло.</p>
     <div class="meta">
-      <div class="price">{PRICE}<span><s>{PRICE_WAS}</s> дальше будет столько · бери, пока не подняли</span></div>
+      <div class="price">{PRICE}<span>один раз, навсегда твоё · без подписки и доплат</span></div>
       <div class="slogan">{SLOGAN}</div>
     </div>
   </div>

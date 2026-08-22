@@ -20,7 +20,7 @@
 | Страница «Перед стартом» | `serbolin-pdf/data/intro.py` | мотивация: привычка / мышление / дисциплина |
 | 14 уроков + бланки | `serbolin-pdf/data/days.py`, `build_tripwire.py` | 17 PDF, дни 2/6/10 тёмные |
 | Интерактивный курс | `serbolin-pdf/build_course.py` | все 14 уроков одним HTML |
-| Страница оффера | `offer-page/build_offer.py` | 690 ₽, зачёркнуто 1 990 ₽, CTA в личку |
+| Страница оффера | `offer-page/build_offer.py` | 1 890 ₽, CTA в личку |
 | Инструкция владельцу | `docs/guide.html` | как собрать это в Telegram-боте |
 | ТЗ на бота | `serbolin-pdf/source/bot-integratsiya-Serbolin.md` | продажа в личке, гейт по подписке на канал |
 

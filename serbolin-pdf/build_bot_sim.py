@@ -21,6 +21,9 @@
   source/tripvaer-14-dney-Serbolin.md, тем же парсером, что у build_course.py;
 * сообщение после оплаты, карточка заявки и реакции на чек-ин — дословно
   из source/bot-integratsiya-Serbolin.md;
+* кнопка «Посчитать свои КБЖУ» в дне 1 — из того же урока. Ссылка на
+  бота-калькулятор пока не выдана, поэтому в CALC_URL пусто и кнопка
+  подписана как неподключённая;
 * размеры и имена PDF — с диска, из out/. Не выдуманные.
 
 ЧТО НАПИСАНО ЗДЕСЬ, А НЕ ВЗЯТО ИЗ СПЕКИ. Двух сообщений в спеках нет —
@@ -47,6 +50,10 @@ OUT = ROOT / "out"
 
 NAME = "Галина"
 CODE = "A7F3"
+# Кнопка на бота-калькулятор КБЖУ в уроке дня 1. Ссылку владелец даёт
+# отдельно; пока пусто — кнопка рисуется и подписана как ещё не подключённая,
+# чтобы в симуляторе было видно, что там дырка.
+CALC_URL = ""
 SLOGAN = "Терпение + Дисциплина = Результат"
 
 # Единственные два текста, которых нет ни в одной спеке. См. шапку файла.
@@ -133,8 +140,12 @@ def out_bubble(text: str, time: str, branch: str = "") -> str:
 
 
 def keys(*labels: str) -> str:
-    items = "".join(f'<button class="key" type="button">{l}</button>'
-                    for l in labels)
+    items = ""
+    for l in labels:
+        pending = ("КБЖУ" in l and not CALC_URL)
+        cls = "key pending" if pending else "key"
+        note = '<span class="tbd">ссылка не подключена</span>' if pending else ""
+        items += f'<button class="{cls}" type="button">{l}{note}</button>'
     return f'<div class="keys">{items}</div>'
 
 
@@ -336,6 +347,10 @@ b,strong{font-weight:600}
   background:var(--in);font-size:15px;line-height:1.45}
 .msg.out .bub{background:var(--out);border-radius:12px 12px 4px 12px}
 .bub p+p{margin-top:9px}
+/* Столбик продуктов внутри сообщения — как список в настоящем чате. */
+.bub .li{display:block;padding-left:15px;position:relative;line-height:1.7}
+.bub .li::before{content:"";position:absolute;left:2px;top:.72em;width:4px;height:4px;
+  border-radius:999px;background:var(--link)}
 .bub .tm{float:right;margin:6px 0 0 10px;font-size:11.5px;color:var(--tx-3);
   line-height:1;position:relative;top:4px}
 .msg.out .bub .tm{color:rgba(255,255,255,.55)}
@@ -356,6 +371,8 @@ b,strong{font-weight:600}
 .key{width:100%;padding:10px;border:0;border-radius:5px;cursor:default;
   background:rgba(24,37,51,.9);color:var(--link);
   font:400 14.5px/1.2 'Inter',sans-serif}
+.key.pending{color:var(--tx-3)}
+.key .tbd{display:block;margin-top:3px;font-size:11px;color:#C4744B}
 .keys .key:first-child{border-radius:5px 5px 3px 3px}
 .keys .key:last-child{border-radius:3px 3px 8px 8px}
 

@@ -116,10 +116,9 @@ def day1() -> dict:
 </div>
 
 <div class="sec">
-  <div class="eyebrow muted">Зачем это</div>
-  <p class="small">План ломается не от слабости, а от нестыковки: он требует
-  тренировку в 19:00, а в 19:00 ты забираешь ребёнка. Сначала описываем твою
-  жизнь — строить будем по ней.</p>
+  {c.note("Моя норма из калькулятора КБЖУ",
+          f"<div class='win'>Ккал {c.fill(20)} · Б {c.fill(14)} · "
+          f"Ж {c.fill(14)} · У {c.fill(14)}</div>")}
 </div>""",
         "css": """
 table.day td.ev { width: 38mm; font-weight: 600; color: #292F3B; }
@@ -141,13 +140,12 @@ def day2() -> dict:
     # одного акцента: алый → приглушённый алый → нейтральный серый.
     # Третий цвет в палитре не заводим, это правило Crimson.
     cols = [
-        ("Белок", "#D8232A", ["Курица, индейка", "Рыба", "Творог, яйца",
-                              "Говядина", "Греческий йогурт"]),
-        ("Овощи", "rgba(216,35,42,0.45)", ["Салат", "Помидоры, огурцы",
-                                           "Брокколи", "Капуста",
-                                           "Замороженная смесь"]),
-        ("Энергия", theme.D_TEXT_4, ["Рис", "Гречка", "Картошка",
-                                     "Паста", "Хлеб"]),
+        ("Белок", "#D8232A", ["Курица", "Индейка", "Рыба", "Творог", "Яйца"]),
+        ("Углеводы", "rgba(216,35,42,0.45)", ["Рис", "Макароны", "Картофель",
+                                              "Гречка", "Овсянка",
+                                              "Хлеб цельнозерновой"]),
+        ("Овощи", theme.D_TEXT_4, ["Огурцы", "Брокколи", "Болгарский перец",
+                                   "Салат", "Капуста", "Сельдерей"]),
     ]
     cells = "".join(
         f"<div class='col'><div class='ch' style='background:{col}'></div>"
@@ -160,12 +158,11 @@ def day2() -> dict:
         "title": "Тарелка из трёх элементов",
         "page": PHONE,
         "dark": True,
-        "lead": "Запретов не будет, калории не считаем — на старте это лишний "
-                "слой, его бросают на четвёртый день. Вместо него один принцип, "
-                "который закрывает 80% работы.",
+        "lead": "Запретов не будет. Норму ты посчитал вчера, а сегодня — "
+                "принцип, по которому собирается любой приём пищи.",
         "body": f"""
 <div class="plate">
-  <svg viewBox="0 0 120 120" width="34mm" height="34mm" xmlns="http://www.w3.org/2000/svg">
+  <svg viewBox="0 0 120 120" width="28mm" height="28mm" xmlns="http://www.w3.org/2000/svg">
     <circle cx="60" cy="60" r="57" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="2"/>
     <path d="M60 60 L60 3 A57 57 0 0 1 109 88 Z" fill="rgba(216,35,42,0.62)"/>
     <path d="M60 60 L109 88 A57 57 0 0 1 11 88 Z" fill="rgba(158,19,25,0.52)"/>
@@ -175,8 +172,8 @@ def day2() -> dict:
   </svg>
   <div class="plegend">
     <div><span class="dot" style="background:rgba(216,35,42,0.62)"></span>Белок</div>
-    <div><span class="dot" style="background:rgba(158,19,25,0.52)"></span>Овощи</div>
-    <div><span class="dot" style="background:#26262A"></span>Энергия</div>
+    <div><span class="dot" style="background:rgba(158,19,25,0.52)"></span>Углеводы</div>
+    <div><span class="dot" style="background:#26262A"></span>Овощи</div>
   </div>
 </div>
 
@@ -184,27 +181,30 @@ def day2() -> dict:
 
 <div class="ex">
   <div class="eyebrow">Собирается так</div>
-  <div>Курица + салат + рис · Творог + помидоры + хлеб · Рыба + брокколи + картошка</div>
+  <div>Курица + рис + огурцы · Творог + хлеб + перец · Рыба + гречка + брокколи</div>
 </div>
+
+<p class="small muted mt">Овощи тут не для галочки: клетчатка помогает белку
+усваиваться, а пищеварению — работать нормально.</p>
 
 {c.note("Задание на сегодня",
         "<p class='small muted'>Собери по принципу два приёма пищи. "
         "Не все, два.</p>"
-        + c.checks(["Приём 1: белок / овощи / энергия на месте",
-                    "Приём 2: белок / овощи / энергия на месте"]))}
+        + c.checks(["Приём 1: белок / углеводы / овощи на месте",
+                    "Приём 2: белок / углеводы / овощи на месте"]))}
 
-<p class="small muted mt">Отметь, какого элемента у тебя обычно не хватает.
-Почти у всех это белок: <b>{c.fill(34)}</b></p>""",
+<p class="small muted mt">Отметь, какого элемента обычно не хватает.
+Почти у всех это белок и овощи: <b>{c.fill(30)}</b></p>""",
         "css": f"""
 .plate {{ display: flex; gap: 5mm; align-items: center; margin-top: 4mm; }}
 .plegend {{ font-size: 0.85em; line-height: 1.9; color: {theme.D_TEXT_2}; }}
 .plegend .dot {{ display: inline-block; width: 2.6mm; height: 2.6mm; border-radius: 999px;
   margin-right: 1.8mm; vertical-align: middle; }}
-.cols {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3mm; margin-top: 5mm; }}
+.cols {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3mm; margin-top: 4mm; }}
 .cols .ch {{ height: 1.1mm; border-radius: 999px; }}
 .cols .cn {{ font-weight: 700; color: {theme.D_TEXT}; font-size: 0.9em; margin: 1.6mm 0 1mm; }}
-.cols .it {{ font-size: 0.82em; color: {theme.D_TEXT_2}; line-height: 1.65; }}
-.ex {{ margin-top: 5mm; font-size: 0.86em; }}
+.cols .it {{ font-size: 0.8em; color: {theme.D_TEXT_2}; line-height: 1.5; }}
+.ex {{ margin-top: 4mm; font-size: 0.84em; }}
 .ex .eyebrow {{ display: block; margin-bottom: 1.4mm; }}
 .mt {{ margin-top: 4mm; }}
 """,
@@ -336,66 +336,65 @@ def day5() -> dict:
 
 
 def day6() -> dict:
-    snacks = [
-        "Творог с ягодами", "Два варёных яйца", "Греческий йогурт",
-        "Кусок отварной курицы", "Сыр с помидором", "Горсть орехов",
-        "Протеиновый коктейль", "Творожный сыр на хлебце",
+    # Разворот дня по правке владельца: голодать не нужно, вечером есть можно.
+    # Решают норма КБЖУ и дефицит, а не время на часах. Поэтому вместо шкалы
+    # суток с «зоной риска» — три правила и список белковых ужинов.
+    dinners = [
+        "Творог с ягодами", "Омлет из двух яиц", "Греческий йогурт",
+        "Курица + огурцы", "Рыба + брокколи", "Индейка + салат",
     ]
-    slots = [
-        ("Завтрак", "с белком, не кофе на бегу", True),
-        ("Обед", "полноценный, а не печенье", True),
-        ("Перекус 16:00–17:00", "белковый — вот он и решает вечер", True),
-        ("Ужин", "спокойный, по принципу тарелки", True),
-        ("21:00–23:00", "зона, где обычно пробивает", False),
+    rules = [
+        ("Норма", "Попадаешь в свои цифры КБЖУ за день — время приёма роли не играет."),
+        ("Дефицит", "Цель похудение — за день выходит минус. Это и решает вес."),
+        ("Самочувствие", "Хорошо спишь после позднего ужина — ужинай поздно. "
+                         "Тяжело — двигай раньше."),
     ]
-    line = "".join(
-        f"<div class='sl{'' if ok else ' risk'}'><div class='bar'></div>"
-        f"<b>{n}</b><div class='small muted'>{d}</div></div>"
-        for n, d, ok in slots
+    items = "".join(
+        f"<div class='rl'><div class='no'>{i}</div>"
+        f"<div class='tx'><b>{t}</b><p class='small'>{d}</p></div></div>"
+        for i, (t, d) in enumerate(rules, 1)
     )
     return {
-        "title": "Вечерний голод",
+        "title": "Голодать — не нужно",
         "page": PHONE,
-        # Механика вечернего голода — то, что держат в голове у холодильника
-        # в 22:00, а не заполняют ручкой. Тёмный лист.
+        # Правила вечерней еды держат в голове у холодильника в 22:00,
+        # а не заполняют ручкой. Тёмный лист.
         "dark": True,
-        "lead": "Днём человек герой, а вечером стоит у холодильника и не "
-                "понимает, что происходит. Это счёт за день, и оплачивают его "
-                "завтраком.",
+        "lead": "«После шести нельзя» — миф. Считается день целиком, "
+                "а не часы на часах.",
         "body": f"""
-<div class="tl">{line}</div>
+<div class="hero">Худеют не от голода.<br>От голода <span>срываются</span>.</div>
+
+<div class="rules">{items}</div>
 
 <div class="sec">
-  <div class="eyebrow">Перекус за 15 секунд — выбери свой</div>
-  <div class="sn">{"".join(f"<div class='s'>{s}</div>" for s in snacks)}</div>
+  <div class="eyebrow">Вечерний приём: белок или белок + овощи</div>
+  <div class="sn">{"".join(f"<div class='s'>{d}</div>" for d in dinners)}</div>
+  <p class="small muted mt">Белок держит сытость до утра. Быстрые углеводы
+  перед сном её не дают — через час снова потянет на кухню.</p>
 </div>
 
 {c.note("Сегодня",
-        c.checks(["Добавить белковый перекус в 16:00–17:00"])
-        + f"<p class='small mt'>Что именно: {c.fill(44)}</p>")}
-
-<div class="sec">
-  <div class="eyebrow">Вечером отметь честно</div>
-  <div class="cmp">
-    <div><div class="box"></div>Тянуло так же</div>
-    <div><div class="box"></div>Тянуло меньше</div>
-    <div><div class="box"></div>Не тянуло вообще</div>
-  </div>
-</div>""",
+        c.checks(["Вечерний приём собран из белка или белка с овощами"])
+        + f"<p class='small mt'>Что именно: {c.fill(44)}</p>"
+        + f"<p class='small'>Утром: как спалось — {c.fill(38)}</p>")}""",
         "css": f"""
-.tl {{ display: flex; gap: 2mm; margin-top: 4mm; }}
-.tl .sl {{ flex: 1; }}
-.tl .sl .bar {{ height: 1.4mm; border-radius: 999px; background: rgba(216,35,42,0.35);
-  margin-bottom: 1.6mm; }}
-.tl .sl.risk .bar {{ background: {theme.ACCENT}; }}
-.tl .sl b {{ font-size: 0.74em; color: {theme.D_TEXT}; display: block; line-height: 1.25; }}
-.tl .sl .small {{ font-size: 0.68em; line-height: 1.3; margin-top: 0.6mm; }}
+.hero {{ font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 13pt;
+  line-height: 1.16; letter-spacing: -0.03em; color: {theme.D_TEXT}; margin-top: 4mm; }}
+.hero span {{ color: {theme.ACCENT_HI}; }}
+.rules {{ margin-top: 4mm; display: flex; flex-direction: column; gap: 2.4mm; }}
+.rules .rl {{ display: flex; gap: 3.4mm; align-items: flex-start; }}
+.rules .no {{ flex: none; width: 6.4mm; height: 6.4mm; border-radius: 999px;
+  background: {theme.ACCENT}; color: #fff; font-family: 'Manrope', sans-serif;
+  font-weight: 800; font-size: 0.78em; display: flex; align-items: center;
+  justify-content: center; }}
+.rules .tx b {{ font-size: 0.92em; color: {theme.D_TEXT}; display: block;
+  font-family: 'Manrope', sans-serif; font-weight: 700; }}
+.rules .tx p {{ margin-top: 0.8mm; line-height: 1.4; }}
 .sn {{ display: grid; grid-template-columns: 1fr 1fr; gap: 1.8mm; margin-top: 2.4mm; }}
 .sn .s {{ background: {theme.PLATE_2}; border-radius: 2.4mm; padding: 1.8mm 2.4mm;
-  font-size: 0.8em; color: {theme.D_TEXT_2}; }}
-.cmp {{ display: flex; gap: 4mm; margin-top: 2.4mm; font-size: 0.85em; }}
-.cmp > div {{ display: flex; gap: 1.6mm; align-items: center; }}
-.sec {{ margin-top: 5mm; }}
+  font-size: 0.78em; color: {theme.D_TEXT_2}; }}
+.sec {{ margin-top: 4mm; }}
 .mt {{ margin-top: 2.4mm; }}
 """,
     }
@@ -405,7 +404,7 @@ def day7() -> dict:
     rows = [
         "Тренировка была",
         "Тарелка по принципу",
-        "Вечер без переедания",
+        "Вечер по плану",
         "Сон 7+ часов",
     ]
     head = "".join(f"<th class='d'>{i}</th>" for i in range(1, 8))
@@ -729,11 +728,11 @@ def day13() -> dict:
 
 def day14() -> dict:
     tools = [
-        "Карта твоего дня и два рабочих окна",
+        "Карта твоего дня, два рабочих окна и своя норма КБЖУ",
         "Принцип тарелки из трёх элементов",
         "Библиотека из девяти блюд и список покупок",
         "Три тренировки с растущими цифрами",
-        "Разобранный вечерний голод",
+        "Схема вечерней еды без голодания",
         "Любимая еда в плане, а не в списке грехов",
         "Короткая тренировка на случай аврала",
         "Правило возврата на четыре шага",

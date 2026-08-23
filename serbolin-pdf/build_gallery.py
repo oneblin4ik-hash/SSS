@@ -61,12 +61,25 @@ def sheet(day: int) -> pathlib.Path:
     return hits[0]
 
 
-def offer_shot() -> str:
-    """Снимает страницу оффера целиком. Ширина 1180 — на ней сетка ещё
-    двухколоночная, как её увидят с десктопа."""
+OFFER_TITLES = ["Обложка", "Ценность", "Решение"]
+OFFER_NOTES = [
+    "Кто говорит, что за курс и персональная строка по тесту.",
+    "Четыре шага курса и одиннадцать инструментов, которые остаются после.",
+    "Отзывы-заглушки, 1 890 ₽, кнопка в личку и семь частых вопросов.",
+]
+
+
+def offer_shots() -> list[str]:
+    """Снимает три слайда оффера по отдельности.
+
+    Ширина 1180 — на ней макет ещё десктопный. Точки-навигация fixed, и в
+    кадр каждого слайда они попали бы поверх текста, поэтому на время съёмки
+    убираются: в галерее они всё равно ничего не объясняют.
+    """
     if not OFFER.exists():
         raise SystemExit("нет offer-page/out/offer.html — прогони build_offer.py")
     from playwright.sync_api import sync_playwright
+    shots = []
     with sync_playwright() as p:
         b = p.chromium.launch(
             executable_path="/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
@@ -74,12 +87,14 @@ def offer_shot() -> str:
                         device_scale_factor=1)
         pg.goto(OFFER.resolve().as_uri(), wait_until="load")
         pg.evaluate("document.fonts.ready")
-        pg.wait_for_timeout(500)
-        pg.screenshot(path=str(SHOT), full_page=True)
+        pg.evaluate("document.querySelector('.dots').remove()")
+        pg.wait_for_timeout(400)
+        for i in (1, 2, 3):
+            pg.locator(f"#s{i}").screenshot(path=str(SHOT))
+            shots.append(png_b64(SHOT))
         b.close()
-    data = png_b64(SHOT)
     SHOT.unlink(missing_ok=True)
-    return data
+    return shots
 
 
 # ─────────────────────────── разметка ───────────────────────────
@@ -115,11 +130,14 @@ def body() -> str:
 <section class="sec">
   <div class="sec-head"><span class="eyebrow">Шаг 1</span>
     <h2>После лид-магнита — оффер</h2>
-    <p>Открывается из бота сразу за персональным разбором. Кнопка ведёт
-    в личку к Эдуарду: платёжной системы нет, реквизиты он называет сам.</p></div>
-  <div class="one">{card(offer_shot(), "—", "Страница оффера",
-      "1 890 ₽, состав курса, отзывы-заглушки и FAQ. Одна страница, один переход.",
-      tall=True)}</div>
+    <p>Три слайда, которые открываются из бота сразу за персональным разбором.
+    Листаются подряд; кнопка на третьем ведёт в личку к Эдуарду — платёжной
+    системы нет, реквизиты он называет сам. Те же три слайда уходят в чат
+    одним PDF.</p></div>
+  <div class="grid">{"".join(
+      card(shot, str(i), title, note, tall=True)
+      for i, (shot, title, note) in enumerate(zip(offer_shots(), OFFER_TITLES,
+                                                  OFFER_NOTES), 1))}</div>
 </section>
 
 <section class="sec">

@@ -42,7 +42,8 @@ import html as html_mod
 import pathlib
 import re
 
-from build_course import avatar_b64, emoji, font_css, inline, parse
+from build_course import GAIN_SUFFIX, avatar_b64, emoji, font_css, inline, parse
+from data import days as days_data
 
 ROOT = pathlib.Path(__file__).parent
 SOURCE = ROOT / "source" / "tripvaer-14-dney-Serbolin.md"
@@ -106,12 +107,20 @@ def upsell() -> list[tuple[str, str]]:
     return [(d, inline(t)) for d, t in hits]
 
 
-def pdf_meta(day: int) -> tuple[str, str]:
-    """Имя и размер настоящего файла из out/ — не выдуманные."""
+def pdf_meta(day: int, goal: str = "cut") -> tuple[str, str]:
+    """Имя и размер настоящего файла из out/ — не выдуманные.
+
+    Версия под набор массы отбирается по суффиксу: дефис сортируется раньше
+    точки, и без фильтра `-nabor` встал бы первым и подменил основную.
+    """
     if day == 0:
         hits = [OUT / "tripvaer-00-pered-startom.pdf"]
     else:
-        hits = sorted(OUT.glob(f"tripvaer-{day:02d}-*.pdf"))
+        want_gain = goal == "gain"
+        hits = sorted(
+            h for h in OUT.glob(f"tripvaer-{day:02d}-*.pdf")
+            if h.stem.endswith(GAIN_SUFFIX) == want_gain
+        )
     if not hits:
         raise SystemExit(f"нет PDF дня {day} — прогони build_tripwire.py")
     f = hits[0]
@@ -149,12 +158,13 @@ def keys(*labels: str) -> str:
     return f'<div class="keys">{items}</div>'
 
 
-def doc(day: int, time: str, caption: str, name: str = "") -> str:
+def doc(day: int, time: str, caption: str, name: str = "",
+        goal: str = "cut") -> str:
     if name:
         f = OUT / name
         fname, size = f.name, f"{f.stat().st_size / 1024:.0f} КБ"
     else:
-        fname, size = pdf_meta(day)
+        fname, size = pdf_meta(day, goal)
     return (
         '<div class="msg in"><div class="bub doc">'
         '<div class="file"><div class="ico">PDF</div>'
@@ -228,15 +238,31 @@ def transcript() -> tuple[str, int]:
 
         lesson = d["lesson"]
         cta = ""
-        if lesson and lesson[-1].startswith("<b>[") :
-            label = re.sub(r"</?b>|\[|\]", "", lesson[-1]).strip()
+        if lesson and lesson[-1][1].startswith("<b>["):
+            label = re.sub(r"</?b>|\[|\]", "", lesson[-1][1]).strip()
             cta = keys(label)
             lesson = lesson[:-1]
-        body = "".join(f"<p>{p}</p>" for p in lesson)
+        # Абзац с меткой цели уходит только своей половине аудитории.
+        # В симуляторе обе лежат рядом, показывает их переключатель.
+        body = "".join(
+            f"<p>{text}</p>" if goal is None
+            else f'<span class="goal {goal}"><p>{text}</p></span>'
+            for goal, text in lesson
+        )
         add(bubble(body, "8:00", buttons=cta))
         add(bubble(f'<p class="eyebrow">Задание на сегодня</p><p>{d["task"]}</p>',
                    "8:00"))
-        add(doc(n, "8:01", f"День {n} · {html_mod.unescape(d['title'])}"))
+        cap_txt = f"День {n} · {html_mod.unescape(d['title'])}"
+        if n in days_data.GOAL_PAGES:
+            # У этих дней страница своя под каждую цель — показываем ту же,
+            # что выбрана переключателем, иначе имя файла врало бы.
+            # Два варианта одного и того же сообщения — в ленте оно одно,
+            # поэтому и считается один раз.
+            add('<span class="goal cut">' + doc(n, "8:01", cap_txt) + "</span>"
+                + '<span class="goal gain">'
+                + doc(n, "8:01", cap_txt, goal="gain") + "</span>")
+        else:
+            add(doc(n, "8:01", cap_txt))
 
         add(bubble(f"<p>{WRITTEN_HERE['checkin']}</p>", "20:00",
                    buttons=keys("Сделал", "Не вышло")))
@@ -382,6 +408,9 @@ b,strong{font-weight:600}
   color:#fff;margin-bottom:8px}
 
 /* ── ветки чек-ина ── */
+.goal{display:none}
+body[data-goal="cut"] .goal.cut{display:block}
+body[data-goal="gain"] .goal.gain{display:block}
 .branch{display:none}
 body[data-branch="done"] .branch.done{display:block}
 body[data-branch="fail"] .branch.fail{display:block}
@@ -416,6 +445,15 @@ def rail(days: list[dict]) -> str:
   <h2>Курс в Telegram</h2>
   <p class="sub">Весь диалог бота с учеником: от заявки до последнего касания.
   Тексты те же, что уйдут в прод.</p>
+
+  <div class="switch">
+    <span class="lbl">Цель ученика</span>
+    <div class="row">
+      <button type="button" data-goal="cut" aria-pressed="true">Похудение</button>
+      <button type="button" data-goal="gain" aria-pressed="false">Набор массы</button>
+    </div>
+    <p>Питание в днях 2, 3, 6, 7, 8 и 10 расходится. Остальное общее.</p>
+  </div>
 
   <div class="switch">
     <span class="lbl">Вечерний чек-ин</span>
@@ -455,12 +493,17 @@ def page() -> tuple[str, int]:
   // В автономном файле атрибут стоит в разметке, в артефакте <body> ставит
   // обёртка публикации — поэтому ветку по умолчанию задаём здесь.
   if (!document.body.dataset.branch) document.body.dataset.branch = 'done';
-  var btns = document.querySelectorAll('.switch button');
-  btns.forEach(function(b){{
-    b.onclick = function(){{
-      document.body.dataset.branch = b.dataset.branch;
-      btns.forEach(function(x){{ x.setAttribute('aria-pressed', x === b); }});
-    }};
+  if (!document.body.dataset.goal) document.body.dataset.goal = 'cut';
+  // Переключателей два и они независимы: цель ученика и ответ на чек-ин.
+  // Кнопки одной группы гасят друг друга, чужую группу не трогают.
+  ['branch', 'goal'].forEach(function(key){{
+    var btns = document.querySelectorAll('.switch button[data-' + key + ']');
+    btns.forEach(function(b){{
+      b.onclick = function(){{
+        document.body.dataset[key] = b.dataset[key];
+        btns.forEach(function(x){{ x.setAttribute('aria-pressed', x === b); }});
+      }};
+    }});
   }});
 }})();
 </script>"""

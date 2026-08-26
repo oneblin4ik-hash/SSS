@@ -54,8 +54,8 @@ def _slug(text: str) -> str:
 
 # ─────────────────────────── страница дня ───────────────────────────
 
-def day_page(day: int) -> tuple[str, str, theme.Page]:
-    d = days_data.get(day)
+def day_page(day: int, goal: str = "cut") -> tuple[str, str, theme.Page]:
+    d = days_data.get(day, goal)
     page = d["page"]
     star = c.emo("⭐") if d["star"] else ""
 
@@ -88,7 +88,11 @@ def day_page(day: int) -> tuple[str, str, theme.Page]:
 .sheet.dark .tw .lead {{ color: {theme.D_TEXT_2}; }}
 """ + d["css"]
 
+    # Страницы под набор массы получают суффикс: комплект в out/ должен
+    # оставаться читаемым глазами, а не превращаться в набор одинаковых имён.
     slug = f"tripvaer-{day:02d}-{_slug(d['title'])}"
+    if goal == "gain":
+        slug += "-nabor"
     return render.document(css, body, f"День {day}. {d['title']}"), slug, page
 
 
@@ -365,8 +369,10 @@ def main() -> None:
             html, slug, page = intro_page()
             print("  ", r.render(html, slug, page).name)
         for n in nums:
-            html, slug, page = day_page(n)
-            print("  ", r.render(html, slug, page).name)
+            # У трёх дней питание расходится по цели — печатаем обе версии.
+            for goal in (("cut", "gain") if n in days_data.GOAL_PAGES else ("cut",)):
+                html, slug, page = day_page(n, goal)
+                print("  ", r.render(html, slug, page).name)
         warnings = r.warnings
 
     if warnings:

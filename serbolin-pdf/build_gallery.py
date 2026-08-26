@@ -33,7 +33,7 @@ import sys
 
 from data import days as days_data
 from data import intro as intro_data
-from build_course import avatar_b64, font_css
+from build_course import GAIN_SUFFIX, avatar_b64, font_css
 
 ROOT = pathlib.Path(__file__).parent
 PREVIEW = ROOT / "preview"
@@ -52,10 +52,16 @@ def png_b64(path: pathlib.Path) -> str:
     return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
 
 
-def sheet(day: int) -> pathlib.Path:
+def sheet(day: int, goal: str = "cut") -> pathlib.Path:
+    """Страница дня. Версия под набор массы отбирается по суффиксу — без этого
+    её ловит глоб и она подменяет основную (дефис сортируется раньше точки)."""
     if day == 0:
         return PREVIEW / "tripvaer-00-pered-startom.png"
-    hits = sorted(PREVIEW.glob(f"tripvaer-{day:02d}-*.png"))
+    want_gain = goal == "gain"
+    hits = sorted(
+        h for h in PREVIEW.glob(f"tripvaer-{day:02d}-*.png")
+        if h.stem.endswith(GAIN_SUFFIX) == want_gain
+    )
     if not hits:
         raise SystemExit(f"нет превью дня {day} — прогони preview.py")
     return hits[0]

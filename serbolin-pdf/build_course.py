@@ -83,8 +83,41 @@ def inline(text: str) -> str:
     return text
 
 
+# Абзац урока может быть общим или уходить только одной цели. В спеке это
+# метка в начале строки; здесь она превращается в поле рядом с текстом.
+GOAL_MARKS = {"[дефицит]": "cut", "[профицит]": "gain"}
+GOALS = ("cut", "gain")
+# Дни, где питание расходится по цели. Тренировки и психология общие.
+GOAL_DAYS = (2, 3, 6, 7, 8, 10)
+
+
+def for_goal(lesson: list[tuple[str | None, str]], goal: str) -> list[str]:
+    """Абзацы урока для одной цели: общие плюс её собственные."""
+    return [html for g, html in lesson if g is None or g == goal]
+
+
+GOAL_LABEL = {"cut": "тем, кто худеет", "gain": "тем, кто набирает массу"}
+
+
+def lesson_para(goal: str | None, body: str) -> str:
+    """Абзац урока. Развилка видна прямо в тексте.
+
+    Здесь, в отличие от бота, показываем обе ветки сразу: этот файл нужен,
+    чтобы прочитать курс целиком и увидеть, где он расходится. Человеку в
+    чат уходит только своя половина.
+    """
+    if goal is None:
+        return f"<p>{body}</p>"
+    return (f'<p class="fork {goal}"><span class="tag">{GOAL_LABEL[goal]}</span>'
+            f"{body}</p>")
+
+
 def parse() -> list[dict]:
-    """Уроки, задания и описания страниц по дням — из markdown спеки."""
+    """Уроки, задания и описания страниц по дням — из markdown спеки.
+
+    Абзац урока приходит парой «цель, текст»: None — общий для всех,
+    cut — только худеющим, gain — только набирающим массу.
+    """
     lines = SOURCE.read_text(encoding="utf-8").split("\n")
     days: list[dict] = []
     cur: dict | None = None
@@ -120,20 +153,45 @@ def parse() -> list[dict]:
             para = ln.lstrip("> ").strip()
             if not para:
                 continue
+            goal = None
+            for mark, code in GOAL_MARKS.items():
+                if para.startswith(mark):
+                    goal, para = code, para[len(mark):].strip()
+                    break
             # Строки списка продуктов («• Курица») склеиваются в один абзац
             # через перенос: в чате и на странице должен получиться столбик,
             # а не десяток отдельных абзацев с интервалами между ними.
+            # Метку цели строка списка наследует у абзаца, под которым идёт, —
+            # писать её в каждом пункте было бы шумно.
             if para.startswith("•"):
                 item = inline(para.lstrip("• ").strip())
-                if cur["lesson"] and cur["lesson"][-1].startswith('<span class="li">'):
-                    cur["lesson"][-1] += f'<span class="li">{item}</span>'
+                prev = cur["lesson"][-1] if cur["lesson"] else None
+                if goal is None and prev:
+                    goal = prev[0]
+                if prev and prev[1].startswith('<span class="li">') and prev[0] == goal:
+                    cur["lesson"][-1] = (goal, prev[1] + f'<span class="li">{item}</span>')
                 else:
-                    cur["lesson"].append(f'<span class="li">{item}</span>')
+                    cur["lesson"].append((goal, f'<span class="li">{item}</span>'))
             else:
-                cur["lesson"].append(inline(para))
+                cur["lesson"].append((goal, inline(para)))
 
     if len(days) != 14:
         raise SystemExit(f"в спеке найдено {len(days)} дней вместо 14")
+
+    # Развилка по цели живёт в шести днях питания. Если метка потеряется при
+    # правке текста, набирающий массу молча получит урок худеющего — поймать
+    # это глазами почти невозможно, поэтому проверяем на сборке.
+    #
+    # Требуем не обе ветки, а хотя бы одну: дням 8 и 10 общий текст подходит
+    # худеющему как есть, и набор просто дописывает к нему абзац. А вот метка
+    # в дне, который сборки не разводят, — точно ошибка: её никто не покажет.
+    for n, d in enumerate(days, 1):
+        marks = {g for g, _ in d["lesson"] if g}
+        if n in GOAL_DAYS and not marks:
+            raise SystemExit(f"день {n}: развилка по цели пропала")
+        if n not in GOAL_DAYS and marks:
+            raise SystemExit(
+                f"день {n}: метка цели {marks} есть, а день не в GOAL_DAYS")
     return days
 
 
@@ -156,7 +214,13 @@ def font_css() -> str:
     return "".join(faces)
 
 
-def sheet_slug(day: int) -> str:
+# Суффикс страниц под набор массы. Вынесен в константу, потому что по нему
+# фильтруют глоб сразу в двух сборках: дефис сортируется раньше точки, и без
+# фильтра `tripvaer-03-...-nabor.png` встаёт первым и подменяет основную версию.
+GAIN_SUFFIX = "-nabor"
+
+
+def sheet_slug(day: int, goal: str = "cut") -> str:
     """Имя растра страницы дня.
 
     Для дня 0 маска `tripvaer-00-*` поймала бы ещё и обложки комплекта
@@ -164,9 +228,14 @@ def sheet_slug(day: int) -> str:
     """
     if day == 0:
         return "tripvaer-00-pered-startom"
-    hits = sorted(PREVIEW.glob(f"tripvaer-{day:02d}-*.png"))
+    want_gain = goal == "gain"
+    hits = sorted(
+        h for h in PREVIEW.glob(f"tripvaer-{day:02d}-*.png")
+        if h.stem.endswith(GAIN_SUFFIX) == want_gain
+    )
     if not hits:
-        raise SystemExit(f"нет превью дня {day} — прогони preview.py")
+        what = "под набор массы " if want_gain else ""
+        raise SystemExit(f"нет превью {what}дня {day} — прогони preview.py")
     return hits[0].stem
 
 
@@ -274,6 +343,10 @@ img{{max-width:100%;display:block}}
 
 .lesson{{margin-top:26px;max-width:66ch}}
 .lesson p{{margin:0 0 15px}}
+.lesson p.fork{{border-left:2px solid var(--line-2);padding-left:15px;margin-left:1px}}
+.lesson p.fork.gain{{border-left-color:var(--accent)}}
+.lesson p.fork .tag{{display:block;font:600 10px/1 'Inter',sans-serif;letter-spacing:1.6px;text-transform:uppercase;color:var(--text-4);margin-bottom:7px}}
+.lesson p.fork.gain .tag{{color:var(--accent-hi)}}
 /* Столбик продуктов: строки идут плотнее обычных абзацев, с алой точкой. */
 .lesson .li{{display:block;padding-left:16px;position:relative;line-height:1.75}}
 .lesson .li::before{{content:"";position:absolute;left:2px;top:.72em;width:5px;height:5px;
@@ -425,7 +498,7 @@ def build_body(days: list[dict]) -> str:
     panes = [intro_pane()]
     for d in days:
         lv = theme.level_for_day(d["n"])
-        lesson = "".join(f"<p>{p}</p>" for p in d["lesson"])
+        lesson = "".join(lesson_para(g, x) for g, x in d["lesson"])
         star = " " + emoji("⭐") if d["star"] else ""
         slug = sheet_slug(d["n"])
         panes.append(f"""

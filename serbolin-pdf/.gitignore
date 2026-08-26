@@ -3,6 +3,7 @@
 build/
 preview/
 shots/
+shots-*.png
 # Архив для отправки — та же пачка PDF, что уже лежит рядом распакованной.
 out/tripvaer-pdf.zip
 __pycache__/

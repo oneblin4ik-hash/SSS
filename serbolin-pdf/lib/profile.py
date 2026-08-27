@@ -59,6 +59,7 @@ class Profile:
     weight_now: float               # w  — кг
     weight_goal: float              # wg — кг
     goal: str                       # gl — loss | mass | tone
+    place: str                      # pl — home | gym | any («ещё не решил» → дом)
     zone: str = "all"               # zn — belly | legs | top | back | all
     form_now: int = 0               # fn — 0…5
     form_goal: int = 0              # fg — 0…5
@@ -73,6 +74,12 @@ class Profile:
     # ── согласование по роду ────────────────────────────────
     # Тот же приём, что f() в квизе (строка 234): одна функция, оба варианта
     # рядом, чтобы при правке текста нельзя было забыть про мужской род.
+    @property
+    def at_gym(self) -> bool:
+        """«Ещё не решил» ведёт в домашний вариант: начать дома можно сегодня,
+        а перейти в зал получится в любой момент."""
+        return self.place == "gym"
+
     def f(self, fem: str, masc: str) -> str:
         return fem if self.gender == "f" else masc
 
@@ -181,6 +188,7 @@ class Profile:
             weight_now=payload["w"],
             weight_goal=payload["wg"],
             goal=payload.get("gl", "loss"),
+            place=payload.get("pl", "home"),
             zone=payload.get("zn") or "all",
             form_now=payload.get("fn", 0),
             form_goal=payload.get("fg", 0),

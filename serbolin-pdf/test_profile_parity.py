@@ -34,33 +34,33 @@ END = "/* ------------------------- рендер ------------------------- */"
 # этапный прогноз при большой разнице и все четыре значения частоты.
 CASES = [
     dict(name="Галина", gender="f", age=36, height=165, weight_now=78,
-         weight_goal=66, goal="loss", zone="belly", form_now=4, form_goal=2,
+         weight_goal=66, goal="loss", place="home", zone="belly", form_now=4, form_goal=2,
          exp="quit", last="m1", did="home", mins="30", freq="2"),
     dict(name="Пётр", gender="m", age=52, height=178, weight_now=96,
-         weight_goal=88, goal="loss", zone="back", form_now=5, form_goal=3,
+         weight_goal=88, goal="loss", place="gym", zone="back", form_now=5, form_goal=3,
          exp="never", last="long", did="home", mins="15", freq="1"),
     dict(name="Марина", gender="f", age=29, height=170, weight_now=63,
-         weight_goal=61, goal="tone", zone="legs", form_now=2, form_goal=4,
+         weight_goal=61, goal="tone", place="any", zone="legs", form_now=2, form_goal=4,
          exp="quit", last="y1", did="gym", mins="45", freq="3"),
     # этапный прогноз: разница больше 10% массы тела и больше 12 кг
     dict(name="Игорь", gender="m", age=44, height=182, weight_now=124,
-         weight_goal=85, goal="loss", zone="belly", form_now=5, form_goal=2,
+         weight_goal=85, goal="loss", place="home", zone="belly", form_now=5, form_goal=2,
          exp="onoff", last="m6", did="diet", mins="30", freq="3"),
     # набор массы, четыре тренировки
     dict(name="Костя", gender="m", age=22, height=186, weight_now=64,
-         weight_goal=76, goal="mass", zone="top", form_now=0, form_goal=4,
+         weight_goal=76, goal="mass", place="gym", zone="top", form_now=0, form_goal=4,
          exp="never", last="long", did="home", mins="90", freq="4+"),
     # режим формы: вес почти не меняется
     dict(name="Оля", gender="f", age=33, height=162, weight_now=57,
-         weight_goal=56, goal="tone", zone="all", form_now=1, form_goal=3,
+         weight_goal=56, goal="tone", place="any", zone="all", form_now=1, form_goal=3,
          exp="onoff", last="m1", did="group", mins="30", freq="2"),
     # граница typeOf(): бросил, но пауза длинная — остаётся quit
     dict(name="Женя", gender="f", age=40, height=168, weight_now=72,
-         weight_goal=64, goal="loss", zone="legs", form_now=3, form_goal=5,
+         weight_goal=64, goal="loss", place="home", zone="legs", form_now=3, form_goal=5,
          exp="quit", last="m6", did="cardio", mins="45", freq="4+"),
     # тонус при заметной разнице в весе — режим всё-таки весовой
     dict(name="Слава", gender="m", age=37, height=175, weight_now=88,
-         weight_goal=82, goal="tone", zone="belly", form_now=4, form_goal=2,
+         weight_goal=82, goal="tone", place="gym", zone="belly", form_now=4, form_goal=2,
          exp="onoff", last="y1", did="gym", mins="90", freq="1"),
 ]
 

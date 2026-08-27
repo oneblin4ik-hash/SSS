@@ -280,7 +280,7 @@ const hapticOk = () => { try { tg.HapticFeedback.notificationOccurred('success')
 const S = {
   name:"", gender:"f", age:36, height:170, wNow:70, wGoal:64,
   goal:null, zone:null, formNow:null, formGoal:null,
-  exp:null, last:null, did:null, mins:null, freq:null, health:[]
+  exp:null, last:null, did:null, place:null, mins:null, freq:null, health:[]
 };
 let i = 0;                 // индекс экрана
 let fb = null;             // текущий микрофидбек
@@ -308,6 +308,7 @@ const Q = [
   { id:"exp",       phase:2 },
   { id:"last",      phase:2, when:()=>S.exp !== 'never' },
   { id:"did",       phase:2, when:()=>S.exp !== 'never' },
+  { id:"place",     phase:2 },
   { id:"mins",      phase:2 },
   { id:"freq",      phase:2 },
   { id:"health",    phase:2 },
@@ -377,6 +378,18 @@ const DID = [
   { v:"sport",  t:"Секция в школе или в юности",
     fb:()=>"База в теле осталась. Только не пытайся выйти на прежние нагрузки в первую неделю — так и приходят травмы." }
 ];
+/* Где заниматься. Третий вариант обязателен: часть людей приходит именно с
+   этим вопросом, и заставлять их выбирать вслепую — терять их на экране.
+   Кто не решил, попадает в домашний вариант: начать дома можно сегодня. */
+const PLACE = [
+  { v:"home", t:"Дома",
+    fb:()=>"Дома и начнём. Оборудование не понадобится: коврик и стул — весь инвентарь." },
+  { v:"gym",  t:"В тренажёрном зале",
+    fb:()=>"Тогда программа будет под тренажёры. Заодно разберём, куда встать в первый день, чтобы не теряться среди железа." },
+  { v:"any",  t:()=>f("Ещё не решила","Ещё не решил"),
+    fb:()=>"Нормальный ответ. Ставлю домашний вариант: начать можно сегодня, а зал никуда не денется — перейти получится в любой момент." }
+];
+
 const MINS = [
   { v:"15", t:"До 15 минут",
     fb:()=>"15 минут — это рабочий формат, а не отговорка. Важнее, чтобы они были каждую неделю." },
@@ -823,6 +836,9 @@ R.last = () => single('last', LAST, 'Реальность',
   'Когда тренировался в последний раз?', 'Приблизительно — этого хватит.');
 R.did = () => single('did', DID, 'Реальность',
   'Что именно ты делал?', 'Если было несколько — выбери то, чего было больше.');
+R.place = () => single('place', PLACE, 'Реальность',
+  'Где собираешься заниматься?',
+  'От этого зависит набор упражнений. Ответ не навсегда — поменять можно.');
 R.mins = () => single('mins', MINS, 'Реальность',
   'Сколько времени готов тратить на одну тренировку?',
   'Не «сколько надо», а сколько реально готов выделять каждую неделю.');
@@ -965,7 +981,7 @@ function payload(){
     v:2, n:S.name, g:S.gender, a:S.age, h:S.height,
     w:S.wNow, wg:S.wGoal, gl:S.goal, zn:S.zone,
     fn:S.formNow, fg:S.formGoal,
-    ex:S.exp, ls:S.last, dd:S.did, mn:S.mins, fq:S.freq, hl:S.health,
+    ex:S.exp, ls:S.last, dd:S.did, pl:S.place, mn:S.mins, fq:S.freq, hl:S.health,
     t:typeOf(), wk:p.weeks, tr:p.tr, bmi:bmi(), cm:chartMode()
   };
 }

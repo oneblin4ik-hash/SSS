@@ -390,7 +390,7 @@ def _translit(text: str) -> str:
 # но последний раз меньше месяца назад, то есть паузы как таковой нет.
 GALINA = Profile(
     name="Галина", gender="f", age=36, height=165,
-    weight_now=78, weight_goal=66, goal="loss", zone="belly",
+    weight_now=78, weight_goal=66, goal="loss", place="home", zone="belly",
     form_now=4, form_goal=2,
     exp="quit", last="m1", did="home", mins="30", freq="2", health=[],
 )
@@ -399,7 +399,7 @@ GALINA = Profile(
 # Плюс второй тип: никогда не занимался, стартует с нуля.
 PETR = Profile(
     name="Пётр", gender="m", age=52, height=178,
-    weight_now=96, weight_goal=88, goal="loss", zone="back",
+    weight_now=96, weight_goal=88, goal="loss", place="gym", zone="back",
     form_now=5, form_goal=3,
     exp="never", mins="15", freq="1", health=["heart", "knee"],
 )
@@ -408,7 +408,7 @@ PETR = Profile(
 # ветку quit и блок GOAL_BLOCK["tone"], которые иначе нигде не рисуются.
 MARINA = Profile(
     name="Марина", gender="f", age=29, height=170,
-    weight_now=63, weight_goal=61, goal="tone", zone="legs",
+    weight_now=63, weight_goal=61, goal="tone", place="any", zone="legs",
     form_now=3, form_goal=5,
     exp="quit", last="y1", did="gym", mins="45", freq="3", health=["back"],
 )

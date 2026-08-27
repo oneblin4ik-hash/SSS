@@ -183,6 +183,12 @@ def note(text: str) -> str:
     return f'<div class="aside"><span class="lbl">Личный чат Эдуарда</span>{text}</div>'
 
 
+def fork_cls(goal: str | None, sex: str | None) -> str:
+    """Классы для абзаца с меткой. Оси независимы: у абзаца может быть и цель,
+    и пол сразу, и тогда он показывается только на пересечении."""
+    return " ".join(x for x in ("fork", goal, sex and f"sex-{sex}") if x)
+
+
 def transcript() -> tuple[str, int]:
     days = parse()
     lv = levels()
@@ -238,16 +244,16 @@ def transcript() -> tuple[str, int]:
 
         lesson = d["lesson"]
         cta = ""
-        if lesson and lesson[-1][1].startswith("<b>["):
-            label = re.sub(r"</?b>|\[|\]", "", lesson[-1][1]).strip()
+        if lesson and lesson[-1][2].startswith("<b>["):
+            label = re.sub(r"</?b>|\[|\]", "", lesson[-1][2]).strip()
             cta = keys(label)
             lesson = lesson[:-1]
         # Абзац с меткой цели уходит только своей половине аудитории.
         # В симуляторе обе лежат рядом, показывает их переключатель.
         body = "".join(
-            f"<p>{text}</p>" if goal is None
-            else f'<span class="goal {goal}"><p>{text}</p></span>'
-            for goal, text in lesson
+            f"<p>{text}</p>" if goal is None and sex is None
+            else f'<span class="{fork_cls(goal, sex)}"><p>{text}</p></span>'
+            for goal, sex, text in lesson
         )
         add(bubble(body, "8:00", buttons=cta))
         add(bubble(f'<p class="eyebrow">Задание на сегодня</p><p>{d["task"]}</p>',
@@ -408,9 +414,14 @@ b,strong{font-weight:600}
   color:#fff;margin-bottom:8px}
 
 /* ── ветки чек-ина ── */
-.goal{display:none}
-body[data-goal="cut"] .goal.cut{display:block}
-body[data-goal="gain"] .goal.gain{display:block}
+/* Абзац с меткой виден по умолчанию, а прячется тот, чья метка не совпала
+   с выбранным. Так пересечение «цель + пол» получается само: достаточно,
+   чтобы не сработало ни одно из правил ниже. Перебирать четыре сочетания
+   положительными правилами не нужно. */
+body[data-goal="cut"] .fork.gain,
+body[data-goal="gain"] .fork.cut,
+body[data-sex="f"] .fork.sex-m,
+body[data-sex="m"] .fork.sex-f{display:none}
 .branch{display:none}
 body[data-branch="done"] .branch.done{display:block}
 body[data-branch="fail"] .branch.fail{display:block}
@@ -445,6 +456,16 @@ def rail(days: list[dict]) -> str:
   <h2>Курс в Telegram</h2>
   <p class="sub">Весь диалог бота с учеником: от заявки до последнего касания.
   Тексты те же, что уйдут в прод.</p>
+
+  <div class="switch">
+    <span class="lbl">Пол ученика</span>
+    <div class="row">
+      <button type="button" data-sex="f" aria-pressed="true">Женщина</button>
+      <button type="button" data-sex="m" aria-pressed="false">Мужчина</button>
+    </div>
+    <p>В тексте расходится только день 7 — про цикл. Остальное меняет
+    программу тренировок и цифры прогноза, а не уроки.</p>
+  </div>
 
   <div class="switch">
     <span class="lbl">Цель ученика</span>
@@ -494,9 +515,10 @@ def page() -> tuple[str, int]:
   // обёртка публикации — поэтому ветку по умолчанию задаём здесь.
   if (!document.body.dataset.branch) document.body.dataset.branch = 'done';
   if (!document.body.dataset.goal) document.body.dataset.goal = 'cut';
+  if (!document.body.dataset.sex) document.body.dataset.sex = 'f';
   // Переключателей два и они независимы: цель ученика и ответ на чек-ин.
   // Кнопки одной группы гасят друг друга, чужую группу не трогают.
-  ['branch', 'goal'].forEach(function(key){{
+  ['branch', 'goal', 'sex'].forEach(function(key){{
     var btns = document.querySelectorAll('.switch button[data-' + key + ']');
     btns.forEach(function(b){{
       b.onclick = function(){{

@@ -83,32 +83,43 @@ def inline(text: str) -> str:
     return text
 
 
-# Абзац урока может быть общим или уходить только одной цели. В спеке это
-# метка в начале строки; здесь она превращается в поле рядом с текстом.
+# Абзац урока может уходить только части читателей. В спеке это метка в начале
+# строки; здесь она превращается в поле рядом с текстом. Осей две и они
+# независимы: цель (питание) и пол (физиология).
 GOAL_MARKS = {"[дефицит]": "cut", "[профицит]": "gain"}
+SEX_MARKS = {"[ж]": "f", "[м]": "m"}
 GOALS = ("cut", "gain")
 # Дни, где питание расходится по цели. Тренировки и психология общие.
 GOAL_DAYS = (2, 3, 6, 7, 8, 10)
+# Дни, где расходится физиология. Их мало намеренно: пол меняет программу
+# тренировок и цифры прогноза, а в тексте уроков — почти ничего.
+SEX_DAYS = (7,)
 
 
-def for_goal(lesson: list[tuple[str | None, str]], goal: str) -> list[str]:
-    """Абзацы урока для одной цели: общие плюс её собственные."""
-    return [html for g, html in lesson if g is None or g == goal]
+def for_reader(lesson: list[tuple[str | None, str | None, str]],
+               goal: str, sex: str = "f") -> list[str]:
+    """Абзацы урока для одного читателя: общие плюс его собственные."""
+    return [html for g, x, html in lesson
+            if (g is None or g == goal) and (x is None or x == sex)]
 
 
 GOAL_LABEL = {"cut": "тем, кто худеет", "gain": "тем, кто набирает массу"}
+SEX_LABEL = {"f": "женщинам", "m": "мужчинам"}
 
 
-def lesson_para(goal: str | None, body: str) -> str:
+def lesson_para(goal: str | None, sex: str | None, body: str) -> str:
     """Абзац урока. Развилка видна прямо в тексте.
 
     Здесь, в отличие от бота, показываем обе ветки сразу: этот файл нужен,
     чтобы прочитать курс целиком и увидеть, где он расходится. Человеку в
     чат уходит только своя половина.
     """
-    if goal is None:
+    if goal is None and sex is None:
         return f"<p>{body}</p>"
-    return (f'<p class="fork {goal}"><span class="tag">{GOAL_LABEL[goal]}</span>'
+    tags = [GOAL_LABEL[goal]] if goal else []
+    tags += [SEX_LABEL[sex]] if sex else []
+    cls = " ".join(x for x in (goal, sex and "sex") if x)
+    return (f'<p class="fork {cls}"><span class="tag">{" · ".join(tags)}</span>'
             f"{body}</p>")
 
 
@@ -153,11 +164,17 @@ def parse() -> list[dict]:
             para = ln.lstrip("> ").strip()
             if not para:
                 continue
-            goal = None
-            for mark, code in GOAL_MARKS.items():
-                if para.startswith(mark):
-                    goal, para = code, para[len(mark):].strip()
-                    break
+            goal = sex = None
+            # Меток может быть две подряд: «[профицит] [ж] …».
+            for marks, setter in ((GOAL_MARKS, "goal"), (SEX_MARKS, "sex")):
+                for mark, code in marks.items():
+                    if para.startswith(mark):
+                        para = para[len(mark):].strip()
+                        if setter == "goal":
+                            goal = code
+                        else:
+                            sex = code
+                        break
             # Строки списка продуктов («• Курица») склеиваются в один абзац
             # через перенос: в чате и на странице должен получиться столбик,
             # а не десяток отдельных абзацев с интервалами между ними.
@@ -166,14 +183,17 @@ def parse() -> list[dict]:
             if para.startswith("•"):
                 item = inline(para.lstrip("• ").strip())
                 prev = cur["lesson"][-1] if cur["lesson"] else None
-                if goal is None and prev:
-                    goal = prev[0]
-                if prev and prev[1].startswith('<span class="li">') and prev[0] == goal:
-                    cur["lesson"][-1] = (goal, prev[1] + f'<span class="li">{item}</span>')
+                if prev:
+                    goal = goal if goal is not None else prev[0]
+                    sex = sex if sex is not None else prev[1]
+                if (prev and prev[2].startswith('<span class="li">')
+                        and prev[:2] == (goal, sex)):
+                    cur["lesson"][-1] = (goal, sex,
+                                         prev[2] + f'<span class="li">{item}</span>')
                 else:
-                    cur["lesson"].append((goal, f'<span class="li">{item}</span>'))
+                    cur["lesson"].append((goal, sex, f'<span class="li">{item}</span>'))
             else:
-                cur["lesson"].append((goal, inline(para)))
+                cur["lesson"].append((goal, sex, inline(para)))
 
     if len(days) != 14:
         raise SystemExit(f"в спеке найдено {len(days)} дней вместо 14")
@@ -186,12 +206,13 @@ def parse() -> list[dict]:
     # худеющему как есть, и набор просто дописывает к нему абзац. А вот метка
     # в дне, который сборки не разводят, — точно ошибка: её никто не покажет.
     for n, d in enumerate(days, 1):
-        marks = {g for g, _ in d["lesson"] if g}
-        if n in GOAL_DAYS and not marks:
-            raise SystemExit(f"день {n}: развилка по цели пропала")
-        if n not in GOAL_DAYS and marks:
-            raise SystemExit(
-                f"день {n}: метка цели {marks} есть, а день не в GOAL_DAYS")
+        for axis, idx, allowed in (("по цели", 0, GOAL_DAYS), ("по полу", 1, SEX_DAYS)):
+            marks = {m[idx] for m in d["lesson"] if m[idx]}
+            if n in allowed and not marks:
+                raise SystemExit(f"день {n}: развилка {axis} пропала")
+            if n not in allowed and marks:
+                raise SystemExit(
+                    f"день {n}: метка {axis} {marks} есть, а день не в списке")
     return days
 
 
@@ -345,6 +366,7 @@ img{{max-width:100%;display:block}}
 .lesson p{{margin:0 0 15px}}
 .lesson p.fork{{border-left:2px solid var(--line-2);padding-left:15px;margin-left:1px}}
 .lesson p.fork.gain{{border-left-color:var(--accent)}}
+.lesson p.fork.sex{{border-left-style:dashed}}
 .lesson p.fork .tag{{display:block;font:600 10px/1 'Inter',sans-serif;letter-spacing:1.6px;text-transform:uppercase;color:var(--text-4);margin-bottom:7px}}
 .lesson p.fork.gain .tag{{color:var(--accent-hi)}}
 /* Столбик продуктов: строки идут плотнее обычных абзацев, с алой точкой. */
@@ -498,7 +520,7 @@ def build_body(days: list[dict]) -> str:
     panes = [intro_pane()]
     for d in days:
         lv = theme.level_for_day(d["n"])
-        lesson = "".join(lesson_para(g, x) for g, x in d["lesson"])
+        lesson = "".join(lesson_para(*m) for m in d["lesson"])
         star = " " + emoji("⭐") if d["star"] else ""
         slug = sheet_slug(d["n"])
         panes.append(f"""

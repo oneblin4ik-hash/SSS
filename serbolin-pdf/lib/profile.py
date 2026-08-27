@@ -30,6 +30,12 @@ MONTHS_GEN = [
 ]
 
 
+_RATE = {
+    "m": {"gain": 0.35, "loss_big": 0.7, "loss": 0.55},
+    "f": {"gain": 0.2, "loss_big": 0.55, "loss": 0.45},
+}
+
+
 def _round_half_up(x: float) -> int:
     """Math.round() из JS: 0.5 округляется вверх, а не к чётному.
 
@@ -128,7 +134,11 @@ class Profile:
             return {"mode": "form", "weeks": weeks, "d": d_all, "gain": gain,
                     "stage": False, "stages": 1, "target": self.weight_goal}
 
-        rate = 0.35 if gain else (0.7 if d_all > 15 else 0.55)
+        # Один в один с RATE в квизе. При равном относительном дефиците
+        # мужчина теряет быстрее — больше сухой массы и суточный расход;
+        # на наборе разрыв почти двукратный. Меняешь тут — меняй и там.
+        r = _RATE.get(self.gender, _RATE["f"])
+        rate = r["gain"] if gain else (r["loss_big"] if d_all > 15 else r["loss"])
         cap = max(4, round(self.weight_now * 0.1))
         stage = (not gain) and d_all > cap and d_all > 12
         d = cap if stage else d_all

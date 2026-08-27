@@ -406,7 +406,15 @@ const HEALTH = [
   { v:"food",  t:"Непереносимость продуктов" },
   { v:"none",  t:"Ничего из этого", solo:true }
 ];
-const FIG_CAPS = ["мягкая","полнее среднего","средняя","подтянутая","спортивная","сухая"];
+/* Подписи под фигурами. Силуэт figSVG() рисуется по полу, а подпись раньше
+   стояла в женском роде для всех — мужчина видел «подтянутая» под мужским
+   силуэтом. Прилагательные женского и мужского рода не совпадают ни в одном
+   из шести пунктов, поэтому это два списка, а не один с окончанием. */
+const FIG_CAPS_BY_SEX = {
+  f: ["мягкая","полнее среднего","средняя","подтянутая","спортивная","сухая"],
+  m: ["мягкий","полнее среднего","средний","подтянутый","спортивный","сухой"],
+};
+const figCaps = () => FIG_CAPS_BY_SEX[S.gender] || FIG_CAPS_BY_SEX.f;
 
 /* ------------------------- расчёты ------------------------- */
 function chartMode(){
@@ -436,7 +444,19 @@ function plan(){
   }
   // Прогноз даём только на первый этап: 10% массы тела.
   // Обещать "минус 35 кг за полгода" — врать, а на этом строится доверие ко всему курсу.
-  const rate = gain ? 0.35 : (dAll > 15 ? 0.7 : 0.55);       // кг в неделю
+  /* Темп зависит от пола, и это не мелочь. При равном относительном дефиците
+     мужчина теряет быстрее: больше сухой массы, больше суточный расход. На
+     наборе разрыв ещё заметнее — почти двукратный. Без этой развилки женщина
+     получала мужской срок, не укладывалась в него и решала, что метод не
+     работает, — ровно то, от чего её отговаривает урок дня 7.
+     Числа — верхняя граница спокойного темпа, а не рекорд.
+     Меняешь тут — меняй и в lib/profile.py, иначе экран и PDF разъедутся. */
+  const RATE = {
+    m: { gain: 0.35, lossBig: 0.7,  loss: 0.55 },
+    f: { gain: 0.2,  lossBig: 0.55, loss: 0.45 },
+  };
+  const r = RATE[S.gender] || RATE.f;
+  const rate = gain ? r.gain : (dAll > 15 ? r.lossBig : r.loss);   // кг в неделю
   const cap = Math.max(4, Math.round(S.wNow * 0.1));
   const stage = !gain && dAll > cap && dAll > 12;
   const d = stage ? cap : dAll;
@@ -766,7 +786,7 @@ R.formNow = () => {
   $screen.innerHTML =
     '<div class="eyebrow">Цель</div><h1>Какая фигура ближе к твоей сейчас?</h1>'+
     '<p class="sub">Грубый ориентир, не диагноз. Никто это не увидит, кроме меня.</p>'+
-    '<div class="figs">'+FIG_CAPS.map((c,n)=>'<button class="fig" data-n="'+n+'" aria-pressed="'+(S.formNow===n)+'">'+figSVG(n,g)+'<div class="cap">'+c+'</div></button>').join('')+'</div>';
+    '<div class="figs">'+figCaps().map((c,n)=>'<button class="fig" data-n="'+n+'" aria-pressed="'+(S.formNow===n)+'">'+figSVG(n,g)+'<div class="cap">'+c+'</div></button>').join('')+'</div>';
   // на этом экране микрофидбека нет: любая реакция на текущую форму читается как оценка
   const b = btn('Дальше', ()=>{ haptic(); next(); }, S.formNow===null);
   $screen.querySelectorAll('[data-n]').forEach(el=>el.onclick=()=>{
@@ -781,7 +801,7 @@ R.formGoal = () => {
   $screen.innerHTML =
     '<div class="eyebrow">Цель</div><h1>А куда хочешь прийти?</h1>'+
     '<p class="sub">Направление, а не обещание.</p>'+
-    '<div class="figs">'+FIG_CAPS.map((c,n)=>'<button class="fig" data-n="'+n+'" aria-pressed="'+(S.formGoal===n)+'">'+figSVG(n,g)+'<div class="cap">'+c+'</div></button>').join('')+'</div>'+
+    '<div class="figs">'+figCaps().map((c,n)=>'<button class="fig" data-n="'+n+'" aria-pressed="'+(S.formGoal===n)+'">'+figSVG(n,g)+'<div class="cap">'+c+'</div></button>').join('')+'</div>'+
     '<div id="fbw"></div>';
   const b = btn('Дальше', ()=>{ haptic(); next(); }, S.formGoal===null);
   $screen.querySelectorAll('[data-n]').forEach(el=>el.onclick=()=>{

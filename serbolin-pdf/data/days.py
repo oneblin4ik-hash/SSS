@@ -457,8 +457,8 @@ def day7(goal: str = "cut") -> dict:
         "<table class='wg'>"
         f"<tr><td>В понедельник</td><td class='v'>{c.fill(20)}</td></tr>"
         f"<tr><td>Сегодня</td><td class='v'>{c.fill(20)}</td></tr>"
-        "</table><p class='small muted mt'>Ориентир — треть килограмма "
-        "за неделю. Ноль: добавь еды. Заметно больше: сбавь.</p></div>"
+        "</table><p class='small muted mt'>Ориентир — твой прогноз из "
+        "теста. Ноль или меньше: добавь еды. Заметно больше: сбавь.</p></div>"
     ) if gain else ""
     body = "".join(
         f"<tr><td class='rl'>{r}</td>"

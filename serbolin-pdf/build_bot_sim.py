@@ -22,8 +22,7 @@
 * сообщение после оплаты, карточка заявки и реакции на чек-ин — дословно
   из source/bot-integratsiya-Serbolin.md;
 * кнопка «Посчитать свои КБЖУ» в дне 1 — из того же урока. Ссылка на
-  бота-калькулятор пока не выдана, поэтому в CALC_URL пусто и кнопка
-  подписана как неподключённая;
+  бота-калькулятор лежит в CALC_URL, кнопка кликабельная;
 * размеры и имена PDF — с диска, из out/. Не выдуманные.
 
 ЧТО НАПИСАНО ЗДЕСЬ, А НЕ ВЗЯТО ИЗ СПЕКИ. Двух сообщений в спеках нет —
@@ -51,10 +50,10 @@ OUT = ROOT / "out"
 
 NAME = "Галина"
 CODE = "A7F3"
-# Кнопка на бота-калькулятор КБЖУ в уроке дня 1. Ссылку владелец даёт
-# отдельно; пока пусто — кнопка рисуется и подписана как ещё не подключённая,
-# чтобы в симуляторе было видно, что там дырка.
-CALC_URL = ""
+# Кнопка на бота-калькулятор КБЖУ в уроке дня 1. Ссылка выдана владельцем.
+# Если её обнулить, кнопка нарисуется неактивной и подписанной «ссылка не
+# подключена» — чтобы в симуляторе было видно, что там дырка.
+CALC_URL = "https://t.me/MoyaNormaBot"
 SLOGAN = "Терпение + Дисциплина = Результат"
 
 # Единственные два текста, которых нет ни в одной спеке. См. шапку файла.
@@ -151,9 +150,13 @@ def out_bubble(text: str, time: str, branch: str = "") -> str:
 def keys(*labels: str) -> str:
     items = ""
     for l in labels:
-        pending = ("КБЖУ" in l and not CALC_URL)
-        cls = "key pending" if pending else "key"
-        note = '<span class="tbd">ссылка не подключена</span>' if pending else ""
+        calc = "КБЖУ" in l
+        if calc and CALC_URL:
+            items += (f'<a class="key" href="{CALC_URL}" target="_blank" '
+                      f'rel="noopener">{l}</a>')
+            continue
+        cls = "key pending" if calc else "key"
+        note = '<span class="tbd">ссылка не подключена</span>' if calc else ""
         items += f'<button class="{cls}" type="button">{l}{note}</button>'
     return f'<div class="keys">{items}</div>'
 
@@ -400,9 +403,11 @@ b,strong{font-weight:600}
 
 /* ── инлайн-клавиатура ── */
 .keys{display:flex;flex-direction:column;gap:2px;margin-top:2px}
-.key{width:100%;padding:10px;border:0;border-radius:5px;cursor:default;
+.key{display:block;box-sizing:border-box;width:100%;padding:10px;border:0;
+  border-radius:5px;cursor:default;text-align:center;text-decoration:none;
   background:rgba(24,37,51,.9);color:var(--link);
   font:400 14.5px/1.2 'Inter',sans-serif}
+a.key{cursor:pointer}
 .key.pending{color:var(--tx-3)}
 .key .tbd{display:block;margin-top:3px;font-size:11px;color:#C4744B}
 .keys .key:first-child{border-radius:5px 5px 3px 3px}
@@ -550,13 +555,20 @@ def main() -> None:
         print(f"  {f} ({kb:.0f} КБ)")
     print(f"  сообщений в ленте: {count}")
 
-    live = re.findall(r'(?:src|href)\s*=\s*"(https?://[^"]+)"', doc_html)
+    # Ищем то, что страница грузит. Ссылка в <a> — это переход по клику,
+    # а не загрузка: CSP её не режет, поэтому она считается отдельно.
+    tags = re.findall(r'<(\w+)[^>]*?(?:src|href)\s*=\s*"(https?://[^"]+)"',
+                      doc_html)
+    live = [u for tag, u in tags if tag.lower() != "a"]
+    links = [u for tag, u in tags if tag.lower() == "a"]
     if live:
         print("\nВнешние ресурсы — в артефакте их срежет CSP:")
         for u in dict.fromkeys(live):
             print("  !", u)
         raise SystemExit(1)
     print("Внешних ресурсов нет — CSP артефакта не помешает.")
+    for u in dict.fromkeys(links):
+        print("  ссылка по клику:", u)
 
 
 if __name__ == "__main__":

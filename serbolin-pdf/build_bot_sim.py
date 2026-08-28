@@ -22,7 +22,8 @@
 * сообщение после оплаты, карточка заявки и реакции на чек-ин — дословно
   из source/bot-integratsiya-Serbolin.md;
 * кнопка «Посчитать свои КБЖУ» в дне 1 — из того же урока. Ссылка на
-  бота-калькулятор лежит в CALC_URL, кнопка кликабельная;
+  бота-калькулятор лежит в CALC_URL у build_course.py — одна на обе
+  сборки, — и кнопка кликабельная;
 * размеры и имена PDF — с диска, из out/. Не выдуманные.
 
 ЧТО НАПИСАНО ЗДЕСЬ, А НЕ ВЗЯТО ИЗ СПЕКИ. Двух сообщений в спеках нет —
@@ -41,7 +42,8 @@ import html as html_mod
 import pathlib
 import re
 
-from build_course import GAIN_SUFFIX, avatar_b64, emoji, font_css, inline, parse
+from build_course import (CALC_URL, GAIN_SUFFIX, avatar_b64, emoji, font_css,
+                          inline, parse)
 from data import days as days_data
 
 ROOT = pathlib.Path(__file__).parent
@@ -50,10 +52,6 @@ OUT = ROOT / "out"
 
 NAME = "Галина"
 CODE = "A7F3"
-# Кнопка на бота-калькулятор КБЖУ в уроке дня 1. Ссылка выдана владельцем.
-# Если её обнулить, кнопка нарисуется неактивной и подписанной «ссылка не
-# подключена» — чтобы в симуляторе было видно, что там дырка.
-CALC_URL = "https://t.me/MoyaNormaBot"
 SLOGAN = "Терпение + Дисциплина = Результат"
 
 # Единственные два текста, которых нет ни в одной спеке. См. шапку файла.

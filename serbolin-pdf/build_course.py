@@ -47,6 +47,11 @@ FONT_FILES = [
 
 PRICE = "1\u2009890 ₽"
 SLOGAN = "Терпение + Дисциплина = Результат"
+# Бот-калькулятор КБЖУ: кнопка «Посчитать свои КБЖУ» в уроке дня 1. Отсюда
+# ссылку берёт и симулятор чата — константа одна на обе сборки. Обнулишь —
+# кнопка нарисуется неактивной и подписанной «ссылка не подключена», чтобы
+# дырка была видна, а не терялась.
+CALC_URL = "https://t.me/MoyaNormaBot"
 
 
 # ─────────────────────────── разбор спеки ───────────────────────────
@@ -107,13 +112,29 @@ GOAL_LABEL = {"cut": "тем, кто худеет", "gain": "тем, кто на
 SEX_LABEL = {"f": "женщинам", "m": "мужчинам"}
 
 
+def cta(label: str) -> str:
+    """Кнопка бота внутри урока. Ссылка есть только у калькулятора КБЖУ."""
+    if "КБЖУ" in label and CALC_URL:
+        return (f'<p class="cta"><a href="{CALC_URL}" target="_blank" '
+                f'rel="noopener">{label}</a></p>')
+    return (f'<p class="cta"><span>{label}</span>'
+            f'<span class="tbd">ссылка не подключена</span></p>')
+
+
 def lesson_para(goal: str | None, sex: str | None, body: str) -> str:
     """Абзац урока. Развилка видна прямо в тексте.
 
     Здесь, в отличие от бота, показываем обе ветки сразу: этот файл нужен,
     чтобы прочитать курс целиком и увидеть, где он расходится. Человеку в
     чат уходит только своя половина.
+
+    Строка вида **[ Посчитать свои КБЖУ ]** — не абзац, а кнопка бота.
+    Рисуем её кнопкой и здесь, чтобы читатель видел то же, что увидит
+    человек в чате.
     """
+    key = re.fullmatch(r"<b>\[(.+?)\]</b>", body.strip())
+    if key:
+        return cta(key.group(1).strip())
     if goal is None and sex is None:
         return f"<p>{body}</p>"
     tags = [GOAL_LABEL[goal]] if goal else []
@@ -374,6 +395,15 @@ img{{max-width:100%;display:block}}
 .lesson .li::before{{content:"";position:absolute;left:2px;top:.72em;width:5px;height:5px;
   border-radius:999px;background:var(--accent)}}
 .lesson p:first-child{{font-size:19px;line-height:1.5;color:var(--text)}}
+.lesson p.cta{{margin:20px 0 15px}}
+.lesson p.cta a,.lesson p.cta span{{display:inline-block;padding:12px 22px;
+  border-radius:999px;font-weight:600;font-size:15px;text-decoration:none;
+  background:var(--accent);color:#fff}}
+.lesson p.cta a:hover{{background:var(--accent-hi)}}
+.lesson p.cta span{{background:transparent;color:var(--text-4);
+  border:1px dashed var(--line-2)}}
+.lesson p.cta .tbd{{display:block;margin-top:7px;padding:0;border:0;
+  font:400 12px/1 'Inter',sans-serif;color:var(--text-4)}}
 
 .task{{margin-top:30px;background:var(--plate);border-radius:var(--r);
   padding:22px 24px;border-left:3px solid var(--accent)}}
@@ -602,12 +632,19 @@ def main() -> None:
     )
     print(f"  {art.name} ({art.stat().st_size // 1024} КБ)")
 
+    # Ищем то, что страница грузит. Ссылка в <a> — переход по клику, а не
+    # загрузка: CSP её не режет, поэтому она считается отдельно.
+    links: list[str] = []
     for f in (full, art):
         text = f.read_text(encoding="utf-8")
-        outside = re.findall(r'(?:src|href)="(?!data:|#)([^"]+)"', text)
+        tags = re.findall(r'<(\w+)[^>]*?(?:src|href)="(?!data:|#)([^"]+)"', text)
+        outside = [u for tag, u in tags if tag.lower() != "a"]
+        links += [u for tag, u in tags if tag.lower() == "a"]
         if outside:
             raise SystemExit(f"{f.name}: внешние ресурсы {outside[:3]} — CSP их срежет")
     print("Внешних ресурсов нет — CSP артефакта не помешает.")
+    for u in dict.fromkeys(links):
+        print("  ссылка по клику:", u)
 
 
 if __name__ == "__main__":

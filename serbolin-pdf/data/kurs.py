@@ -324,8 +324,8 @@ WK_CSS = f"""
 .wk .nm b {{ display: block; font-size: 28px; font-weight: 700; }}
 .wk .nm .easy {{ display: block; font-size: 21px; color: {g.TEXT_4}; margin-top: 4px;
   line-height: 1.3; }}
-.wk .cell {{ height: 42px; margin: 0 9px; border-radius: 10px;
-  border: 1px dashed rgba(255,255,255,0.18); background: rgba(255,255,255,0.02); }}
+.wk .cell {{ height: 42px; margin: 0 9px; border-radius: 9px;
+  background: #FFFFFF; box-shadow: 0 2px 10px rgba(0,0,0,0.45); }}
 
 .grid3 {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }}
 .chiplist {{ display: flex; flex-wrap: wrap; gap: 10px; }}
@@ -344,8 +344,8 @@ WK_CSS = f"""
 .week .h {{ font-family: 'JetBrains Mono', monospace; font-size: 21px;
   color: {g.TEXT_4}; text-align: center; }}
 .week .l {{ font-size: 27px; padding: 22px 0; }}
-.week .bx {{ width: 44px; height: 44px; margin: 0 auto; border-radius: 12px;
-  border: 2px solid {g.GOLD_EDGE}; background: rgba(212,168,67,0.07); }}
+.week .bx {{ width: 44px; height: 44px; margin: 0 auto; border-radius: 11px;
+  background: #FFFFFF; box-shadow: 0 2px 10px rgba(0,0,0,0.45); }}
 """
 
 
@@ -432,8 +432,8 @@ def day3() -> dict:
         f'<span class="mono" style="color:{g.TEXT_4}">{v}</span>'
         f'<span class="mono" style="color:{g.GOLD};text-align:right">{k}</span></div>'
         for n, v, k in drinks)
-    glasses = "".join('<div style="flex:1;height:46px;border:1px solid ' + g.GOLD_EDGE +
-                      ';border-radius:0 0 10px 10px;background:rgba(212,168,67,0.05)"></div>'
+    glasses = "".join('<div style="flex:1;height:42px;border-radius:0 0 10px 10px;'
+                      'background:#FFFFFF;box-shadow:0 2px 10px rgba(0,0,0,0.45)"></div>'
                       for _ in range(8))
     body = f"""
 {b.plate('Жидкие калории не насыщают. Организм не считает их едой, '
@@ -547,7 +547,7 @@ def day8() -> dict:
             slots.append(
                 f'<div class="tile" style="padding:20px 22px">'
                 f'<div class="mono" style="color:{g.GOLD};font-size:20px">{meal} {i}</div>'
-                f'<div class="field" style="margin-top:12px;height:38px"></div>'
+                f'<div class="field" style="margin-top:12px;height:40px"></div>'
                 f'<div class="note" style="font-size:19px;margin-top:8px">'
                 f'белок · овощи · энергия</div></div>')
     shop = b.bento([

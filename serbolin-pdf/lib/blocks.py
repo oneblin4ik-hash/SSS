@@ -120,11 +120,14 @@ def checks(items: list[str]) -> str:
 
 def fields(labels: list[str], cols: int = 2) -> str:
     """Поля под запись. Их немного и они короткие: страница не анкета."""
+    # Подпись растягивается, окно прижато к низу: иначе двухстрочная подпись
+    # («Отбой → подъём») роняет своё окно ниже соседних, и ряд едет.
     cells = "".join(
-        f'<div><div class="small" style="margin-bottom:10px">{l}</div>'
+        f'<div style="display:flex;flex-direction:column">'
+        f'<div class="small" style="flex:1;margin-bottom:8px">{l}</div>'
         f'<div class="field"></div></div>' for l in labels)
     return (f'<div style="display:grid;grid-template-columns:repeat({cols},1fr);'
-            f'gap:18px 28px;margin-top:6px">{cells}</div>')
+            f'gap:14px 26px;margin-top:4px">{cells}</div>')
 
 
 def numlist(items: list[tuple[str, str]], cols: int = 1) -> str:

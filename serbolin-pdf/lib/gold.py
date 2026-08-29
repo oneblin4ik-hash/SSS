@@ -243,12 +243,21 @@ b, strong {{ font-weight: 700; color: {TEXT}; }}
 .rows .r .t {{ font-size: 30px; color: {TEXT}; font-weight: 600; }}
 .rows .r .v {{ font-size: 26px; color: {TEXT_3}; white-space: nowrap; }}
 
-.field {{ border-bottom: 1px solid rgba(255,255,255,0.18); height: 38px; }}
+/* Всё, что заполняют ручкой, — белое окно. Ни подчёркиваний, ни пунктира:
+   на чёрном листе писать можно только по белому, остальное нечитаемо и в
+   печати, и на экране телефона. Решение владельца, единое для всего курса. */
+.field {{
+  background: #FFFFFF;
+  border-radius: 10px;
+  height: 44px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.45);
+}}
 .checkline {{ display: flex; align-items: center; gap: 18px; padding: 13px 0; }}
 .checkbox {{
   width: 34px; height: 34px; flex: none;
-  border: 2px solid {GOLD_EDGE}; border-radius: 9px;
-  background: rgba(212,168,67,0.07);
+  border-radius: 9px;
+  background: #FFFFFF;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.45);
 }}
 
 /* ── фото ── */

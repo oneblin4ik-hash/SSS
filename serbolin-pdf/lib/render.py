@@ -55,11 +55,14 @@ def _executable() -> str | None:
 class Renderer:
     """Один запуск браузера на весь комплект — иначе 15 холодных стартов."""
 
-    def __init__(self) -> None:
+    def __init__(self, overflow_js: str | None = None) -> None:
         BUILD.mkdir(exist_ok=True)
         OUT.mkdir(exist_ok=True)
         self._pw = None
         self._browser = None
+        # У курса своя вёрстка и свой признак переполнения: лист там ужат
+        # трансформом, и мерить миллиметры по экранным координатам нельзя.
+        self._overflow_js = overflow_js or _OVERFLOW_JS
         # Сюда падают страницы, где контент вылез за поля. У .sheet стоит
         # overflow:hidden, поэтому в PDF переполнение выглядит как молча
         # обрезанный текст — глазами это ловится не всегда.
@@ -90,7 +93,7 @@ class Renderer:
         # Без этого Chromium успевает напечатать до подгрузки woff2.
         pg.evaluate("document.fonts.ready")
 
-        overflow = pg.evaluate(_OVERFLOW_JS)
+        overflow = pg.evaluate(self._overflow_js)
         if overflow:
             self.warnings.append(f"{slug}: {overflow}")
 

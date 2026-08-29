@@ -8,3 +8,6 @@ shots-*.png
 out/tripvaer-pdf.zip
 __pycache__/
 *.pyc
+# Курс одним документом — склейка тех же kurs-*.pdf, что лежат рядом.
+# Версионировать 11 МБ дубля незачем, собирается из build_kurs.py.
+out/kurs-polnyy.pdf

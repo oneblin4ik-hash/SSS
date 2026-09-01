@@ -213,7 +213,7 @@ b, strong {{ font-weight: 700; color: {TEXT}; }}
 .tile .cap {{
   font-family: 'Intro', sans-serif;
   font-size: 17px; letter-spacing: 3px; text-transform: uppercase;
-  color: {GOLD}; margin-bottom: 18px;
+  color: {GOLD}; margin-bottom: 14px;
 }}
 
 .bento {{ display: grid; gap: 20px; }}

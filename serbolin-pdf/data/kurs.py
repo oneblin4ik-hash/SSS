@@ -530,7 +530,10 @@ def day7() -> dict:
            'включая меня.</div>' + b.fields(["Дней"], cols=1),
            "Сколько дней вышло неидеально"),
     b.tile('<div class="note">Один, не список. На второй неделе работаем именно '
-           'с ним.</div>' + b.fields(["Пункт"], cols=1), "Мой слабый пункт"),
+           'с ним.</div>' + b.fields(["Пункт"], cols=1) +
+           '<div class="note" style="margin-top:12px;color:' + g.GOLD + '">'
+           'Запиши его. Это первое, что я спрашиваю на разборе.</div>',
+           "Мой слабый пункт"),
 ])}
 """
     return day_page(7, "Первый чекпоинт",
@@ -570,8 +573,9 @@ def day8() -> dict:
        text-transform:uppercase;color:{g.GOLD};margin-bottom:10px">Список покупок</div>
   {shop}
 </div>
-<div class="note">Скучно? Да. Работает? Тоже да. Результат дают повторяющиеся
-  действия, а не новизна.</div>
+<div class="note">Скучно? Да. Работает? Тоже да.
+  <span style="color:{g.GOLD}">Если девять блюд собираются с трудом — это нормально,
+  у большинства так. На разборе делаем это вдвоём за десять минут.</span></div>
 """
     return day_page(8, "Питание на три дня вперёд",
                     "Еда выходит из-под контроля не от голода. Она выходит из-за того, "
@@ -686,7 +690,10 @@ def day13() -> dict:
         f'<div class="field" style="flex:1"></div>'
         '<div style="font-family:Bebas,sans-serif;font-size:56px;color:' + g.GOLD + '">%</div>'
         '</div><div class="note" style="margin-top:12px">Считай грубо: на сколько '
-        'выросла сумма повторов относительно четвёртого дня.</div>', "Мой прирост", "gold")}
+        'выросла сумма повторов относительно четвёртого дня.</div>'
+        '<div class="note" style="margin-top:10px;color:' + g.GOLD_HI + '">Эта цифра '
+        'плюс листы за четвёртый и девятый день — всё, что мне нужно, чтобы '
+        'посчитать твою норму.</div>', "Мой прирост", "gold")}
 """
     return day_page(13, "Третья тренировка — тест прогресса",
                     "Тот же комплекс, третий раз. Достань записи за четвёртый "
@@ -704,9 +711,9 @@ def day14() -> dict:
              "Короткая тренировка на случай аврала",
              "Правило возврата на четыре шага"]
     tl = "".join(
-        f'<div style="display:flex;gap:18px;padding:6px 0;border-top:1px solid {g.LINE_SOFT}">'
+        f'<div style="display:flex;gap:18px;padding:5px 0;border-top:1px solid {g.LINE_SOFT}">'
         f'<span class="mono" style="color:{g.GOLD};flex:none">{i:02d}</span>'
-        f'<span style="font-size:22px;line-height:1.25">{t}</span></div>'
+        f'<span style="font-size:21px;line-height:1.22">{t}</span></div>'
         for i, t in enumerate(tools, 1))
     body = f"""
 {b.bento([
@@ -722,7 +729,9 @@ def day14() -> dict:
 {b.tile('<div class="body">Это не мотивация на две недели, а инструменты — они '
         'остаются, даже если ты закроешь бота. Дальше два пути: повторять цикл '
         'самому или прийти на разбор, где твои записи за эти 14 дней считают '
-        'под твои цифры.</div>', "Что дальше", "gold")}
+        'под твои цифры. <span style="color:' + g.GOLD_HI + ';font-weight:700">'
+        'Второй путь — на следующей странице: созвон 30 минут, бесплатно.</span></div>',
+        "Что дальше", "gold")}
 """
     return day_page(14, "Точка А → Точка Б",
                     "Четырнадцать дней позади. Курс заканчивается сегодня, "
@@ -732,39 +741,102 @@ def day14() -> dict:
 # ─────────────────────────── разбор ───────────────────────────
 
 def offer() -> dict:
-    items = [("note", "Разбираем твои записи, а не начинаем с нуля"),
-             ("calc", "Норма КБЖУ и план тренировок под твой режим"),
-             ("message", "Связь со мной, а не с ботом")]
-    rows = "".join(
-        f'<div class="tile" style="display:flex;align-items:center;gap:22px;'
-        f'padding:26px 30px">{b.icon(ic, 34)}'
-        f'<span style="font-size:28px;line-height:1.3">{t}</span></div>'
-        for ic, t in items)
-    body = f"""
-<div class="pad" style="padding-top:64px">
+    """Финал курса. Два листа: на одном четыре блока разбора и снятие
+    возражений не помещаются, а резать их нельзя — здесь решается заявка.
+
+    Что изменилось против первой версии. Раньше слайд не говорил ни формата,
+    ни цены, ни того, что человек уносит: «разбираем твои записи» — это
+    процесс, а не результат. Теперь три факта стоят в подзаголовке, документ
+    после созвона назван прямым текстом, а кнопка несёт слово-ключ, чтобы
+    человеку не пришлось придумывать, с чего начать сообщение.
+    """
+    blocks = [
+        ("01", "Питание",
+         "Что и сколько ты ешь на самом деле — по твоим записям, а не по памяти. "
+         "Где норма, где перебор, из-за чего растёт жир вместо мышц."),
+        ("02", "Тренировки",
+         "Три колонки повторов у тебя уже есть. Скажу, что убрать, что добавить "
+         "и как держать прогрессию дальше, чтобы прирост с тринадцатого дня "
+         "не встал."),
+        ("03", "Режим",
+         "Твоя карта суток с первого дня: сон, активность, два окна, вечер. "
+         "У большинства неделя ломается именно здесь, и у тебя это место уже "
+         "записано на седьмом."),
+        ("04", "Стратегия",
+         "Норма КБЖУ, план на ближайший месяц, порядок шагов. Под твой режим, "
+         "а не под среднего человека из калькулятора."),
+    ]
+    cards = "".join(
+        f'<div class="tile" style="padding:24px 26px">'
+        f'<div style="display:flex;align-items:baseline;gap:14px;margin-bottom:10px">'
+        f'<span class="mono" style="color:{g.GOLD};font-size:22px">{n}</span>'
+        f'<span style="font-size:30px;font-weight:700">{title}</span></div>'
+        f'<div class="small" style="line-height:1.4">{text}</div></div>'
+        for n, title, text in blocks)
+
+    sheet1 = f"""
+<div class="pad" style="padding-top:60px">
   <div class="eyebrow">Дальше</div>
-  <h1 style="margin-top:24px;font-size:82px">Разбор<br>под твои цифры</h1>
-  <div class="lead" style="margin-top:26px;max-width:840px">
-    У тебя уже есть 14 дней записей. Это не анкета «сколько вам лет» — это данные.
-    Принеси их, и дальше считаем под тебя, а не под среднего человека.
+  <h1 style="margin-top:22px;font-size:80px">Разбор<br>под твои цифры</h1>
+
+  <div class="tile gold" style="margin-top:26px;padding:24px 30px">
+    <div style="font-family:'Intro',sans-serif;font-size:21px;letter-spacing:0.9px;
+         text-transform:uppercase;color:{g.GOLD_HI};white-space:nowrap">
+      Созвон 30 минут · бесплатно · с документом на выходе
+    </div>
   </div>
-  <div class="bento" style="margin-top:36px;gap:16px">{rows}</div>
+
+  <div class="lead" style="margin-top:26px;max-width:860px">
+    Четырнадцать дней ты писал то, что обычно не пишет никто: свои сутки,
+    свою тарелку, свой слабый пункт, три колонки повторов. Ко мне приходят
+    с фразой «хочу похудеть». Ты придёшь с данными.
+  </div>
 </div>
 
-<div style="margin-top:34px;flex:1;min-height:0;display:flex">
-  {b.photo(f"{PHOTO}/eduard-zal.webp", 0, pos="center 26%",
-           style="flex:1;height:auto;border-radius:28px")}
-</div>
+<div class="content pad" style="padding-top:34px">
+  <div class="eyebrow" style="margin-bottom:16px">За полчаса разбираем четыре вещи</div>
+  <div class="bento two" style="gap:16px">{cards}</div>
 
-<div class="pad" style="margin-top:-70px;position:relative">
-  {b.btn("Напиши Эдуарду", "https://t.me/Mr_Serbolin")}
-  <div class="note" style="margin-top:22px;max-width:640px">
-    Без подписки и автопродлений. Сначала разговор, потом решение.
+  <div class="tile" style="margin-top:22px">
+    <div class="cap">Уходишь не с ощущением, а с файлом</div>
+    <div style="font-size:31px;line-height:1.4">
+      После созвона я присылаю документ: все рекомендации и пошаговая
+      стратегия, письменно. Откроешь его через неделю, когда половина
+      разговора уже забылась, и пойдёшь по пунктам.
+    </div>
   </div>
 </div>
 {b.foot()}
 """
-    return {"slug": "kurs-15-razbor", "body": body}
+
+    sheet2 = f"""
+<div class="content pad" style="padding-top:60px">
+  {b.bento([
+      b.tile('<div class="body">Уговаривать тебя на сопровождение я не стану. '
+             'Увижу, что вытянешь сам, так и скажу: иди по второму кругу, вот '
+             'что поменяй. Вести человека, которому я не нужен, мне '
+             'неинтересно.</div>', "Чего не будет"),
+      b.tile('<div class="body">Записи работают, пока они свежие. Через месяц '
+             'это уже не данные, а воспоминания. Разбирать будет нечего.</div>',
+             "Почему сейчас"),
+  ], gap=18)}
+
+  <div style="margin-top:24px;flex:1;min-height:0;display:flex">
+    {b.photo(f"{PHOTO}/eduard-zal.webp", 0, pos="center 26%",
+             style="flex:1;height:auto;border-radius:28px")}
+  </div>
+
+  <div style="margin-top:26px">
+    {b.btn("Написать Эдуарду", "https://t.me/Mr_Serbolin?text=РАЗБОР")}
+    <div class="body" style="margin-top:20px;margin-bottom:16px;max-width:760px">
+      Отправь одно слово: <b>РАЗБОР</b>. Пойму, что ты дошёл до конца курса,
+      и отвечу первым.
+    </div>
+  </div>
+</div>
+{b.foot()}
+"""
+    return {"slug": "kurs-15-razbor", "body": [sheet1, sheet2]}
 
 
 # ─────────────────────────── список страниц ───────────────────────────

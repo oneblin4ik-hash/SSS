@@ -97,11 +97,15 @@ def bento(tiles: list[str], cols: int = 2, gap: int = 20, style: str = "") -> st
             f'{"".join(tiles)}</div>')
 
 
-def plate(html: str, accent: bool = False) -> str:
+def plate(html: str, accent: bool = False, pad: str = "40px 42px") -> str:
     """Плашка с главной мыслью дня — то, что человек прочитает, даже если
-    остальное пролистает."""
+    остальное пролистает.
+
+    `pad` поджимается только там, где на листе две плашки: на дне 14 при
+    обычных сорока пикселях сверху и снизу контент вылезает за 1920 px.
+    """
     cls = "tile gold" if accent else "tile solid"
-    return (f'<div class="{cls}" style="padding:40px 42px">'
+    return (f'<div class="{cls}" style="padding:{pad}">'
             f'<div style="font-size:34px;line-height:1.32;font-weight:700">{html}</div></div>')
 
 

@@ -22,14 +22,14 @@
 Страницы дней не персонализируются: род нейтральный, имени нет. Персональные
 данные живут в лид-магните, у него своя сборка.
 """
+from build_course import CALC_URL
 from lib import blocks as b
 from lib import gold as g
 
 PHOTO = "../assets/photo"
 AVATAR = "../assets/avatar.png"
 
-PRICE = "1 890 ₽"
-SLOGAN_HTML = 'Терпение + Дисциплина =<br><b>Результат</b>'
+SLOGAN = "Терпение + Дисциплина = Результат"
 
 
 # ─────────────────────────── обложка ───────────────────────────
@@ -63,21 +63,22 @@ def cover() -> dict:
 <div class="pad" style="margin-top:-96px;position:relative">
   <div class="eyebrow" style="letter-spacing:6px">Курс · 14 дней</div>
   <div class="wordmark" style="margin-top:26px">Первые шаги<br>к форме</div>
-  <div class="lead" style="margin-top:30px;max-width:820px">
-    14 дней — с чего начать и как не бросить. Один короткий урок в день
-    и одно действие, а не теория на потом.
+  <div class="lead" style="margin-top:28px;max-width:840px">
+    Четырнадцать дней, после которых не надо начинать заново с понедельника.
+    Один короткий урок в день и одно действие.
   </div>
 
   <div class="bento two" style="margin-top:52px">{lv}</div>
 
-  <div class="tile gold" style="margin-top:26px;display:flex;align-items:center;
-       justify-content:space-between;gap:30px;padding:34px 38px">
-    <div>
-      <div style="font-family:'Bebas',sans-serif;font-size:76px;line-height:0.9;
-           color:{g.GOLD_HI}">{PRICE}</div>
-      <div class="small" style="margin-top:10px">один раз, навсегда твоё · без подписки и доплат</div>
+  <div class="tile gold" style="margin-top:26px;padding:30px 34px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:26px">
+      <div class="cap" style="margin-bottom:0;font-size:19px">Твои 14 дней</div>
+      <div style="font-family:'Intro',sans-serif;font-size:17px;letter-spacing:2.2px;
+           text-transform:uppercase;color:{g.GOLD}">{SLOGAN}</div>
     </div>
-    <div class="slogan" style="font-size:19px">{SLOGAN_HTML}</div>
+    {b.fields(["Старт", "Финиш"], cols=2)}
+    <div class="note" style="margin-top:14px">Впиши обе даты прямо сейчас, до первого
+      урока. Курс без даты старта откладывается на понедельник, которого не будет.</div>
   </div>
 </div>
 """
@@ -204,22 +205,30 @@ def intro() -> dict:
 _DIVIDER = {
     1: ("Три дня без запретов и без диеты. Сначала смотрим, с чем работаем: "
         "режим, тарелка, вода. Менять будем потом — и точечно.",
-        "do-posle-74-54", "center"),
+        "do-posle-74-54", "center",
+        "74 → 54 кг. Восемь месяцев, а не четырнадцать дней — пишу это "
+        "специально. Курс даёт старт, остальное делает время."),
     2: ("Начинаются действия: первая тренировка, день отдыха по плану, вечерняя "
         "еда без голода. В конце недели — честный чекпоинт.",
-        "do-posle-136-105", "center"),
+        "do-posle-136-105", "center",
+        "136 → 105 кг за четыре месяца. Начинается это всегда одинаково: "
+        "одна тренировка и один обычный день, записанный честно."),
     3: ("Отдельные действия собираются в конструкцию: еда решена на три дня "
         "вперёд, цифры в тренировке растут, любимая еда стоит в плане.",
-        "do-posle-106-85", "center"),
+        "do-posle-106-85", "center",
+        "106 → 85 кг за четыре месяца. Без новой диеты: то же самое, "
+        "повторённое много раз."),
     4: ("Последние четыре дня про то, что будет после курса: короткая версия "
         "на аврал, правило возврата и цифры, которые выросли.",
-        "do-posle-chempion", "center 34%"),
+        "do-posle-chempion", "center 34%",
+        "Четыре месяца между кадрами, дальше сцена. Курс — это первые "
+        "две недели такого пути, и они у тебя уже позади."),
 }
 
 
 def divider(n: int) -> dict:
     lv = g.LEVELS[n - 1]
-    lead, ph, pos = _DIVIDER[n]
+    lead, ph, pos, caption = _DIVIDER[n]
     days = [(d, dict(_TOC[n])[f"{d:02d}"]) for d in range(lv["days"][0], lv["days"][1] + 1)]
     chips = "".join(
         f'<div class="tile" style="padding:18px 20px">'
@@ -245,8 +254,12 @@ def divider(n: int) -> dict:
   <div class="lead" style="margin-top:22px;max-width:800px">{lead}</div>
 </div>
 
-<div style="margin-top:40px;flex:1;min-height:0;display:flex">
+<div style="margin-top:36px;flex:1;min-height:0;display:flex">
   {b.photo(f"{PHOTO}/{ph}.webp", 0, pos=pos, style="flex:1;height:auto;border-radius:28px 28px 0 0")}
+</div>
+
+<div class="pad" style="margin-top:16px">
+  <div class="note" style="line-height:1.35">{caption}</div>
 </div>
 
 <div class="pad" style="margin-top:22px">
@@ -320,11 +333,11 @@ WK_CSS = f"""
 .wk .th {{ font-family: 'Intro', sans-serif; font-size: 15px; letter-spacing: 1.6px;
   text-transform: uppercase; color: {g.TEXT_4}; padding: 18px 0; text-align: center; }}
 .wk .th:first-child {{ text-align: left; padding-left: 28px; }}
-.wk .nm {{ padding: 10px 26px; }}
+.wk .nm {{ padding: 7px 26px; }}
 .wk .nm b {{ display: block; font-size: 28px; font-weight: 700; }}
 .wk .nm .easy {{ display: block; font-size: 21px; color: {g.TEXT_4}; margin-top: 4px;
   line-height: 1.3; }}
-.wk .cell {{ height: 42px; margin: 0 9px; border-radius: 9px;
+.wk .cell {{ height: 38px; margin: 0 9px; border-radius: 9px;
   background: #FFFFFF; box-shadow: 0 2px 10px rgba(0,0,0,0.45); }}
 
 .grid3 {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }}
@@ -375,16 +388,20 @@ def day1() -> dict:
 <div>
   <div class="cap" style="font-family:'Intro',sans-serif;font-size:17px;letter-spacing:3px;
        text-transform:uppercase;color:{g.GOLD};margin-bottom:10px">Таблица суток</div>
-  <div class="note" style="margin-bottom:16px">Время ставь как было. Что именно было
-    в тарелке — не пиши, содержание нас сегодня не интересует.</div>
+  <div class="note" style="margin-bottom:14px">Время ставь как было.
+    Что было в тарелке, сегодня не пиши.</div>
   {table}
 </div>
-{b.bento([
-    b.tile(b.fields(["1.", "2."], cols=2), "Мои два окна по 20–30 минут"),
-    b.tile(b.fields(["Отбой → подъём", "Итого часов"], cols=2), "Сколько вышло сна"),
-])}
-{b.tile(b.fields(["Ккал", "Белки", "Жиры", "Углеводы"], cols=4),
-        "Моя норма из калькулятора КБЖУ")}
+{b.tile(b.fields(["Окно 1", "Окно 2", "Отбой → подъём", "Итого часов"], cols=4),
+        "Два окна по 20–30 минут и сколько вышло сна")}
+<div class="tile">
+  <div class="cap">Моя норма из калькулятора КБЖУ</div>
+  {b.fields(["Ккал", "Белки", "Жиры", "Углеводы"], cols=4)}
+  <div style="margin-top:14px;display:flex;align-items:center;gap:22px">
+    {b.btn("Посчитать КБЖУ", CALC_URL, "calc")}
+    <span class="note">Считает мой бот, за две минуты.</span>
+  </div>
+</div>
 """
     return day_page(1, "Аудит режима",
                     "Ничего сегодня не меняем, только смотрим, с чем работаем. "

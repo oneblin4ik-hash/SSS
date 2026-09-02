@@ -677,8 +677,11 @@ const SRC = {src_json};
 </script>
 """
     css = shell_fonts() + SHELL_CSS + LIGHTBOX_CSS
-    full = document(css, body, "Путь клиента · Первые шаги к форме")
-    inner = f"<style>{css}</style>{body}"
+    title = "Воронка Серболина"
+    full = document(css, body, title)
+    # Артефакт оборачивает файл сам: свой <!doctype>, <html> и <body> здесь
+    # не нужны, а <title> нужен — по нему страницу зовут в галерее и в табе.
+    inner = f"<title>{title}</title><style>{css}</style>{body}"
     return full, inner
 
 

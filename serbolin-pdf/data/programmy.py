@@ -150,9 +150,12 @@ MISSING: list[str] = []
 
 
 def _frame(e: dict) -> str:
-    """Кадр упражнения. Нет файла — пустое окно с подписью «кадр»: страница
-    остаётся читаемой, и видно, чего ждём. У кардио кадра нет и не будет,
-    там стоит пиктограмма."""
+    """Картинка упражнения. Обычно кадр из видео; у трёх упражнений вместо
+    него фигура, нарисованная кодом (см. `atlas.figure`), у кардио —
+    пиктограмма. Нет файла кадра — пустое окно с подписью «кадр»: страница
+    остаётся читаемой, и видно, чего ждём."""
+    if e["figure"]:
+        return f'<div class="exf drawn">{b.figure(e["figure"], 104)}</div>'
     src = e["frame"]
     if not src:
         return f'<div class="exf icon">{b.icon("flame", 40, g.GOLD_DEEP, 2)}</div>' 
@@ -186,7 +189,7 @@ CSS = f"""
 .exf {{ flex: none; width: 112px; height: 112px; border-radius: 14px;
   overflow: hidden; background: {g.WELL}; border: 1px solid {g.LINE}; }}
 .exf img {{ width: 100%; height: 100%; object-fit: cover; }}
-.exf.empty, .exf.icon {{ display: flex; align-items: center;
+.exf.empty, .exf.icon, .exf.drawn {{ display: flex; align-items: center;
   justify-content: center; }}
 .exf.empty {{ border-style: dashed; border-color: {g.GOLD_EDGE}; }}
 /* Заглушка не показывает код упражнения: и в Bebas, и в Manrope

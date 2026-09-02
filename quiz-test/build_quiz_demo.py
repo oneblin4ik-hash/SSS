@@ -225,6 +225,12 @@ def overlay_js() -> str:
     el.classList.add('on');
     el.scrollTop=0;
     el.__json=JSON.stringify(data);
+    // Демка умеет жить внутри чужой страницы — например, в «пути клиента».
+    // Родителю уходит тот же payload, что ушёл бы боту.
+    if (window.parent && window.parent !== window) {
+      try { window.parent.postMessage({quiz:'done', data:data}, '*'); }
+      catch(e){}
+    }
   };
 
   function toast(msg){

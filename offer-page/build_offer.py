@@ -261,6 +261,44 @@ def avatar_svg(letter: str) -> str:
     )
 
 
+# Восемь снимков «до/после» из папки курса. Подписей под ними нет намеренно:
+# цифры веса и срок Эдуард вшил прямо в кадр, и дублировать их снизу — шум.
+# Своих цифр мы не добавляем: придумать срок к чужой фотографии нельзя.
+#
+# Согласие клиентов на публичный показ подтвердил владелец.
+RESULTS = ["do-posle-74-54", "do-posle-136-105", "do-posle-106-85",
+           "do-posle-70-62", "do-posle-137-120", "do-posle-chempion",
+           "do-posle-podrostok", "do-posle-spina"]
+
+PHOTO_DIR = HERE.parent / "serbolin-pdf" / "assets" / "photo"
+
+
+def photo_b64(stem: str) -> str:
+    raw = (PHOTO_DIR / f"{stem}.webp").read_bytes()
+    return "data:image/webp;base64," + base64.b64encode(raw).decode("ascii")
+
+
+def results_html() -> str:
+    cells = "".join(
+        f'<figure class="rz"><img src="{photo_b64(stem)}" alt="" loading="lazy">'
+        "</figure>" for stem in RESULTS)
+    return f"""
+      <p class="eyebrow">Результаты учеников</p>
+      <div class="rz-grid">{cells}</div>
+      <p class="rz-note">Сроки стоят на самих кадрах: от трёх месяцев до восьми.
+      За две недели курса такого не будет, и курс говорит об этом прямым
+      текстом. Он даёт старт, остальное делает время.</p>
+      <div class="rz-reg">
+        <div><b>2</b><span>чемпиона по бодибилдингу</span></div>
+        <div><b>3</b><span>МСМК</span></div>
+        <div><b>13</b><span>мастера спорта</span></div>
+        <div><b>18</b><span>КМС</span></div>
+      </div>
+      <p class="rz-note">Три последние цифры — пауэрлифтинг. К твоей задаче
+      отношения не имеют: это про то, что нагрузку под конкретного человека
+      Эдуард считать умеет.</p>"""
+
+
 def reviews_html() -> str:
     cards = "".join(
         f'<li class="rv">'
@@ -373,7 +411,9 @@ def slide_decide(interactive: bool) -> str:
     return f"""
   <section class="slide" id="s3" aria-label="Слайд 3 из 3">
     <div class="col">
-      <p class="eyebrow">Как это проходит</p>
+      {results_html()}
+
+      <p class="eyebrow" style="margin-top:26px">Как это проходит</p>
       <div class="reviews">{reviews_html()}</div>
 
       <!-- ЗАГЛУШКА. В макете тут число прошедших и оценка. В спеке таких
@@ -525,6 +565,18 @@ h1,h2,h3{font-weight:800;letter-spacing:-.04em;line-height:1.06;text-wrap:balanc
 .rv-top b{font:700 15px/1.25 'Manrope',sans-serif;color:var(--text)}
 .rv-res{font:600 12.5px/1.35 'Inter',sans-serif;color:var(--accent-hi);margin-top:3px}
 .rv p{font-size:14.5px;line-height:1.55;color:var(--text-3)}
+
+.rz-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.rz{position:relative;margin:0;border-radius:14px;overflow:hidden;
+  background:var(--plate);border:1px solid var(--line)}
+.rz img{display:block;width:100%;height:auto}
+.rz-note{margin-top:10px;font:400 13px/1.5 'Inter',sans-serif;color:var(--text-4)}
+.rz-reg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
+.rz-reg div{background:var(--plate);border:1px solid var(--line);
+  border-radius:12px;padding:12px 10px}
+.rz-reg b{display:block;font:800 24px/1 'Manrope',sans-serif;color:var(--accent-hi)}
+.rz-reg span{display:block;margin-top:4px;font:500 11px/1.25 'Inter',sans-serif;
+  color:var(--text-4)}
 
 .ph{margin-top:16px;border:1px dashed var(--line-2);border-radius:14px;
   padding:14px 18px;font-size:13.5px;line-height:1.5;color:var(--text-4)}

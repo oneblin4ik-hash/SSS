@@ -93,23 +93,29 @@ def inline(text: str) -> str:
 # независимы: цель (питание) и пол (физиология).
 GOAL_MARKS = {"[дефицит]": "cut", "[профицит]": "gain"}
 SEX_MARKS = {"[ж]": "f", "[м]": "m"}
+PLACE_MARKS = {"[дом]": "home", "[зал]": "gym"}
 GOALS = ("cut", "gain")
 # Дни, где питание расходится по цели. Тренировки и психология общие.
 GOAL_DAYS = (2, 3, 6, 7, 8, 10)
 # Дни, где расходится физиология. Их мало намеренно: пол меняет программу
 # тренировок и цифры прогноза, а в тексте уроков — почти ничего.
 SEX_DAYS = (7,)
+# Дни тренировок. Место занятий меняет и комплекс на странице, и сам урок:
+# «20 минут дома без оборудования» человеку с абонементом не подходит.
+PLACE_DAYS = (4, 9, 11, 13)
 
 
-def for_reader(lesson: list[tuple[str | None, str | None, str]],
-               goal: str, sex: str = "f") -> list[str]:
+def for_reader(lesson: list[tuple[str | None, str | None, str | None, str]],
+               goal: str, sex: str = "f", place: str = "home") -> list[str]:
     """Абзацы урока для одного читателя: общие плюс его собственные."""
-    return [html for g, x, html in lesson
-            if (g is None or g == goal) and (x is None or x == sex)]
+    return [html for g, x, pl, html in lesson
+            if (g is None or g == goal) and (x is None or x == sex)
+            and (pl is None or pl == place)]
 
 
 GOAL_LABEL = {"cut": "тем, кто худеет", "gain": "тем, кто набирает массу"}
 SEX_LABEL = {"f": "женщинам", "m": "мужчинам"}
+PLACE_LABEL = {"home": "тем, кто дома", "gym": "тем, кто в зале"}
 
 
 def cta(label: str) -> str:
@@ -121,7 +127,8 @@ def cta(label: str) -> str:
             f'<span class="tbd">ссылка не подключена</span></p>')
 
 
-def lesson_para(goal: str | None, sex: str | None, body: str) -> str:
+def lesson_para(goal: str | None, sex: str | None, place: str | None,
+                body: str) -> str:
     """Абзац урока. Развилка видна прямо в тексте.
 
     Здесь, в отличие от бота, показываем обе ветки сразу: этот файл нужен,
@@ -135,11 +142,12 @@ def lesson_para(goal: str | None, sex: str | None, body: str) -> str:
     key = re.fullmatch(r"<b>\[(.+?)\]</b>", body.strip())
     if key:
         return cta(key.group(1).strip())
-    if goal is None and sex is None:
+    if goal is None and sex is None and place is None:
         return f"<p>{body}</p>"
     tags = [GOAL_LABEL[goal]] if goal else []
     tags += [SEX_LABEL[sex]] if sex else []
-    cls = " ".join(x for x in (goal, sex and "sex") if x)
+    tags += [PLACE_LABEL[place]] if place else []
+    cls = " ".join(x for x in (goal, sex and "sex", place) if x)
     return (f'<p class="fork {cls}"><span class="tag">{" · ".join(tags)}</span>'
             f"{body}</p>")
 
@@ -185,17 +193,17 @@ def parse() -> list[dict]:
             para = ln.lstrip("> ").strip()
             if not para:
                 continue
-            goal = sex = None
-            # Меток может быть две подряд: «[профицит] [ж] …».
-            for marks, setter in ((GOAL_MARKS, "goal"), (SEX_MARKS, "sex")):
+            goal = sex = place = None
+            # Меток может быть несколько подряд: «[профицит] [ж] …».
+            axes = {"goal": None, "sex": None, "place": None}
+            for marks, axis in ((GOAL_MARKS, "goal"), (SEX_MARKS, "sex"),
+                                (PLACE_MARKS, "place")):
                 for mark, code in marks.items():
                     if para.startswith(mark):
                         para = para[len(mark):].strip()
-                        if setter == "goal":
-                            goal = code
-                        else:
-                            sex = code
+                        axes[axis] = code
                         break
+            goal, sex, place = axes["goal"], axes["sex"], axes["place"]
             # Строки списка продуктов («• Курица») склеиваются в один абзац
             # через перенос: в чате и на странице должен получиться столбик,
             # а не десяток отдельных абзацев с интервалами между ними.
@@ -207,14 +215,16 @@ def parse() -> list[dict]:
                 if prev:
                     goal = goal if goal is not None else prev[0]
                     sex = sex if sex is not None else prev[1]
-                if (prev and prev[2].startswith('<span class="li">')
-                        and prev[:2] == (goal, sex)):
-                    cur["lesson"][-1] = (goal, sex,
-                                         prev[2] + f'<span class="li">{item}</span>')
+                    place = place if place is not None else prev[2]
+                if (prev and prev[3].startswith('<span class="li">')
+                        and prev[:3] == (goal, sex, place)):
+                    cur["lesson"][-1] = (goal, sex, place,
+                                         prev[3] + f'<span class="li">{item}</span>')
                 else:
-                    cur["lesson"].append((goal, sex, f'<span class="li">{item}</span>'))
+                    cur["lesson"].append(
+                        (goal, sex, place, f'<span class="li">{item}</span>'))
             else:
-                cur["lesson"].append((goal, sex, inline(para)))
+                cur["lesson"].append((goal, sex, place, inline(para)))
 
     if len(days) != 14:
         raise SystemExit(f"в спеке найдено {len(days)} дней вместо 14")
@@ -227,7 +237,9 @@ def parse() -> list[dict]:
     # худеющему как есть, и набор просто дописывает к нему абзац. А вот метка
     # в дне, который сборки не разводят, — точно ошибка: её никто не покажет.
     for n, d in enumerate(days, 1):
-        for axis, idx, allowed in (("по цели", 0, GOAL_DAYS), ("по полу", 1, SEX_DAYS)):
+        for axis, idx, allowed in (("по цели", 0, GOAL_DAYS),
+                                   ("по полу", 1, SEX_DAYS),
+                                   ("по месту", 2, PLACE_DAYS)):
             marks = {m[idx] for m in d["lesson"] if m[idx]}
             if n in allowed and not marks:
                 raise SystemExit(f"день {n}: развилка {axis} пропала")

@@ -184,10 +184,10 @@ def note(text: str) -> str:
     return f'<div class="aside"><span class="lbl">Личный чат Эдуарда</span>{text}</div>'
 
 
-def fork_cls(goal: str | None, sex: str | None) -> str:
+def fork_cls(goal: str | None, sex: str | None, place: str | None) -> str:
     """Классы для абзаца с меткой. Оси независимы: у абзаца может быть и цель,
-    и пол сразу, и тогда он показывается только на пересечении."""
-    return " ".join(x for x in ("fork", goal, sex and f"sex-{sex}") if x)
+    и пол, и место сразу, и тогда он показывается только на пересечении."""
+    return " ".join(x for x in ("fork", goal, sex and f"sex-{sex}", place) if x)
 
 
 def transcript() -> tuple[str, int]:
@@ -245,16 +245,16 @@ def transcript() -> tuple[str, int]:
 
         lesson = d["lesson"]
         cta = ""
-        if lesson and lesson[-1][2].startswith("<b>["):
-            label = re.sub(r"</?b>|\[|\]", "", lesson[-1][2]).strip()
+        if lesson and lesson[-1][3].startswith("<b>["):
+            label = re.sub(r"</?b>|\[|\]", "", lesson[-1][3]).strip()
             cta = keys(label)
             lesson = lesson[:-1]
         # Абзац с меткой цели уходит только своей половине аудитории.
         # В симуляторе обе лежат рядом, показывает их переключатель.
         body = "".join(
-            f"<p>{text}</p>" if goal is None and sex is None
-            else f'<span class="{fork_cls(goal, sex)}"><p>{text}</p></span>'
-            for goal, sex, text in lesson
+            f"<p>{text}</p>" if goal is None and sex is None and place is None
+            else f'<span class="{fork_cls(goal, sex, place)}"><p>{text}</p></span>'
+            for goal, sex, place, text in lesson
         )
         add(bubble(body, "8:00", buttons=cta))
         add(bubble(f'<p class="eyebrow">Задание на сегодня</p><p>{d["task"]}</p>',
@@ -424,7 +424,9 @@ a.key{cursor:pointer}
 body[data-goal="cut"] .fork.gain,
 body[data-goal="gain"] .fork.cut,
 body[data-sex="f"] .fork.sex-m,
-body[data-sex="m"] .fork.sex-f{display:none}
+body[data-sex="m"] .fork.sex-f,
+body[data-place="home"] .fork.gym,
+body[data-place="gym"] .fork.home{display:none}
 .branch{display:none}
 body[data-branch="done"] .branch.done{display:block}
 body[data-branch="fail"] .branch.fail{display:block}
@@ -480,6 +482,16 @@ def rail(days: list[dict]) -> str:
   </div>
 
   <div class="switch">
+    <span class="lbl">Где занимается</span>
+    <div class="row">
+      <button type="button" data-place="home" aria-pressed="true">Дома</button>
+      <button type="button" data-place="gym" aria-pressed="false">В зале</button>
+    </div>
+    <p>Дни 4, 9, 11 и 13: комплекс и урок разные. День 11 у обоих домашний —
+    в аврал до зала не доезжают.</p>
+  </div>
+
+  <div class="switch">
     <span class="lbl">Вечерний чек-ин</span>
     <div class="row">
       <button type="button" data-branch="done" aria-pressed="true">Сделал</button>
@@ -519,9 +531,10 @@ def page() -> tuple[str, int]:
   if (!document.body.dataset.branch) document.body.dataset.branch = 'done';
   if (!document.body.dataset.goal) document.body.dataset.goal = 'cut';
   if (!document.body.dataset.sex) document.body.dataset.sex = 'f';
-  // Переключателей два и они независимы: цель ученика и ответ на чек-ин.
+  if (!document.body.dataset.place) document.body.dataset.place = 'home';
+  // Переключатели независимы: пол, цель, место и ответ на чек-ин.
   // Кнопки одной группы гасят друг друга, чужую группу не трогают.
-  ['branch', 'goal', 'sex'].forEach(function(key){{
+  ['branch', 'goal', 'sex', 'place'].forEach(function(key){{
     var btns = document.querySelectorAll('.switch button[data-' + key + ']');
     btns.forEach(function(b){{
       b.onclick = function(){{

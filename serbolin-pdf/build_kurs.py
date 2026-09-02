@@ -33,6 +33,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 from data import kurs
+from data import programmy
 from lib import gold as g
 from lib.render import Renderer, document
 
@@ -55,7 +56,7 @@ OVERFLOW_JS = """
 
 def page_html(body) -> str:
     """body — строка или список строк: страница из одного листа или из двух."""
-    css = g.base_css(g.PHONE) + kurs.WK_CSS
+    css = g.base_css(g.PHONE) + kurs.WK_CSS + programmy.CSS
     sheets = body if isinstance(body, list) else [body]
     html = "".join(f'<div class="sheet"><div class="stage">{s}</div></div>'
                    for s in sheets)
@@ -74,7 +75,7 @@ def merge(paths: list[pathlib.Path], dst: pathlib.Path) -> None:
 
 #: Показательная сборка для kurs-polnyy.pdf. Любая комбинация даёт связный
 #: курс; эта выбрана как самая частая по ответам квиза.
-SHOWCASE = {"goal": "cut", "sex": "m"}
+SHOWCASE = {"goal": "cut", "sex": "m", "place": "dom"}
 
 
 def main() -> None:
@@ -93,8 +94,14 @@ def main() -> None:
 
     full = OUT / "kurs-polnyy.pdf"
     merge([made[p["slug"]] for p in kurs.book(**SHOWCASE)], full)
-    print(f"\nПоказательная сборка ({SHOWCASE['goal']} · {SHOWCASE['sex']}): "
+    print(f"\nПоказательная сборка ({' · '.join(SHOWCASE.values())}): "
           f"{full.name}  {full.stat().st_size // 1024} КБ")
+
+    if programmy.MISSING:
+        print(f"\nНет кадров упражнений ({len(programmy.MISSING)}) — на их месте "
+              f"пустые окна с кодом.\n  Кладём в assets/exercise/, задание "
+              f"на съём — source/zadanie-na-kadry.md")
+        print("  " + ", ".join(sorted(programmy.MISSING)))
 
     if warnings:
         print("\nПереполнение — контент обрежется молча:")

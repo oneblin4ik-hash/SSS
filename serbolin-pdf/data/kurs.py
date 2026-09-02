@@ -1,5 +1,5 @@
 """
-Содержимое 22 страниц курса «Первые шаги к форме» — тёмная золотая версия.
+Содержимое курса «Первые шаги к форме» — тёмная золотая версия.
 
 Тексты перенесены из канвы Claude Design, которую утвердил владелец
 (`Курс - Первые шаги к форме.dc.html`), а она, в свою очередь, собрана из
@@ -23,6 +23,7 @@
 данные живут в лид-магните, у него своя сборка.
 """
 from build_course import CALC_URL
+from data import programmy
 from lib import blocks as b
 from lib import gold as g
 
@@ -116,7 +117,7 @@ def toc() -> dict:
             f'{items}</div>')
 
     body = f"""
-{b.head("Оглавление", "22 страницы")}
+{b.head("Оглавление", "25 листов")}
 <div class="content pad" style="padding-top:40px">
   <h2>Что будет за 14 дней</h2>
   <div class="lead" style="margin-top:16px;max-width:840px">
@@ -124,6 +125,8 @@ def toc() -> dict:
     опирается на предыдущий.
   </div>
   <div class="bento" style="margin-top:28px;gap:16px">{"".join(cards)}</div>
+  <div class="note" style="margin-top:20px">После четырнадцатого дня — твоя
+    программа тренировок и разбор под твои цифры.</div>
 </div>
 {b.foot()}
 """
@@ -908,7 +911,7 @@ def offer() -> dict:
 </div>
 {b.foot()}
 """
-    return {"slug": "kurs-15-razbor", "body": [sheet1, sheet2]}
+    return {"slug": "kurs-16-razbor", "body": [sheet1, sheet2]}
 
 
 # ─────────────────────────── список страниц ───────────────────────────
@@ -933,13 +936,15 @@ def all_pages() -> list[dict]:
                 pages += [days[n](sex) for sex in SEXES]
             else:
                 pages.append(days[n]())
+    pages += programmy.all_programs()
     pages.append(offer())
     return pages
 
 
-def book(goal: str = "cut", sex: str = "m") -> list[dict]:
-    """Один связный курс для одного человека — то, что он получит на руки.
-    Из него собирается kurs-polnyy.pdf, чтобы смотреть подряд глазами."""
+def book(goal: str = "cut", sex: str = "m", place: str = "dom") -> list[dict]:
+    """Один связный курс для одного человека — то, что он получит на руки:
+    четырнадцать дней в своём варианте, своя программа и разбор. Из него
+    собирается kurs-polnyy.pdf, чтобы смотреть подряд глазами."""
     pages = [cover(), toc(), intro()]
     days = {n: globals()[f"day{n}"] for n in range(1, 15)}
     for lv in g.LEVELS:
@@ -951,5 +956,6 @@ def book(goal: str = "cut", sex: str = "m") -> list[dict]:
                 pages.append(days[n](sex))
             else:
                 pages.append(days[n]())
+    pages.append(programmy.page(place, goal, sex))
     pages.append(offer())
     return pages

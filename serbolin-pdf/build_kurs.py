@@ -99,8 +99,8 @@ def main() -> None:
 
     if programmy.MISSING:
         print(f"\nНет кадров упражнений ({len(programmy.MISSING)}) — на их месте "
-              f"пустые окна с кодом.\n  Кладём в assets/exercise/, задание "
-              f"на съём — source/zadanie-na-kadry.md")
+              f"пустые окна с подписью «кадр».\n  Кладём в assets/exercise/, "
+              f"задание на съём — source/zadanie-na-kadry.md")
         print("  " + ", ".join(sorted(programmy.MISSING)))
 
     if warnings:

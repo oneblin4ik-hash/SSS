@@ -224,8 +224,9 @@ _DIVIDER = {
     4: ("Последние четыре дня про то, что будет после курса: короткая версия "
         "на аврал, правило возврата и цифры, которые выросли.",
         "do-posle-chempion", "center 34%",
-        "Четыре месяца между кадрами, дальше сцена. Курс — это первые "
-        "две недели такого пути, и они у тебя уже позади."),
+        "Эльнур, мой клиент. Между кадрами четыре месяца, дальше были четыре "
+        "абсолютных чемпионских титула по бодибилдингу. А начиналось с того "
+        "же, что у тебя: режим, тарелка и записанные повторы."),
 }
 
 
@@ -896,9 +897,26 @@ def offer() -> dict:
              "Почему сейчас"),
   ], gap=18)}
 
-  <div style="margin-top:24px;flex:1;min-height:0;display:flex">
+  {b.tile(
+      '<div style="display:grid;grid-template-columns:1.4fr 1fr 1.3fr 1fr;'
+      'gap:20px">' +
+      "".join(
+          f'<div><div style="font-family:Bebas,sans-serif;font-size:52px;'
+          f'line-height:1;color:{g.GOLD}">{num}</div>'
+          f'<div class="small" style="margin-top:4px;line-height:1.2">{what}</div></div>'
+          for num, what in [("2", "чемпиона по бодибилдингу"),
+                            ("3", "МСМК"), ("13", "мастера спорта"),
+                            ("18", "КМС")]) +
+      '</div>'
+      '<div class="note" style="margin-top:14px">Три последние цифры — '
+      'пауэрлифтинг. Выступать я тебя не позову, и к твоей цели это отношения '
+      'не имеет. Это про то, что нагрузку и еду под конкретного человека '
+      'я считать умею. На разборе будет то же самое, только под твои цифры.</div>',
+      "Кого я довёл", style="margin-top:18px")}
+
+  <div style="margin-top:22px;flex:1;min-height:0;display:flex">
     {b.photo(f"{PHOTO}/eduard-zal.webp", 0, pos="center 26%",
-             style="flex:1;height:auto;border-radius:28px")}
+             style="flex:1;height:auto;max-height:430px;border-radius:28px")}
   </div>
 
   <div style="margin-top:26px">

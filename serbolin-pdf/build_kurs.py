@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 """
-Курс «Первые шаги к форме» — тёмная золотая версия. 22 страницы PDF.
+Курс «Первые шаги к форме» — тёмная золотая версия, страница на PDF.
 
     python3 build_kurs.py
 
 На выходе в out/: kurs-*.pdf по странице на файл плюс kurs-polnyy.pdf —
-весь курс одним документом, чтобы смотреть подряд.
+один связный курс одним документом, чтобы смотреть подряд.
+
+Варианты. Три страницы расходятся по цели (дни 3, 6, 7 — суффикс -nabor),
+четыре по полу (дни 4, 9, 11, 13 — суффикс -m или -zh: базовый комплекс
+у мужчин без ягодичного мостика, решение владельца). Файлов поэтому больше,
+чем страниц у одного человека: бот выбирает по ответам квиза и присылает
+по одному файлу в день. В kurs-polnyy.pdf уходит показательная сборка —
+похудение, мужчина; её собирает kurs.book().
 
 Чем это отличается от build_tripwire.py. Тот собирает прежний набор в
 алой светлой системе и остаётся на месте: на него завязаны лид-магнит,
@@ -65,23 +72,29 @@ def merge(paths: list[pathlib.Path], dst: pathlib.Path) -> None:
     doc.save(dst)
 
 
+#: Показательная сборка для kurs-polnyy.pdf. Любая комбинация даёт связный
+#: курс; эта выбрана как самая частая по ответам квиза.
+SHOWCASE = {"goal": "cut", "sex": "m"}
+
+
 def main() -> None:
     pages = kurs.all_pages()
-    made: list[pathlib.Path] = []
+    made: dict[str, pathlib.Path] = {}
 
     with Renderer(overflow_js=OVERFLOW_JS) as r:
         for p in pages:
-            made.append(r.render(page_html(p["body"]), p["slug"], g.PHONE))
+            made[p["slug"]] = r.render(page_html(p["body"]), p["slug"], g.PHONE)
         warnings = list(r.warnings)
 
-    total = sum(p.stat().st_size for p in made)
+    total = sum(p.stat().st_size for p in made.values())
     print(f"Собрано страниц: {len(made)}, {total // 1024} КБ")
-    for p in made:
+    for slug, p in made.items():
         print(f"  {p.name}  {p.stat().st_size // 1024} КБ")
 
     full = OUT / "kurs-polnyy.pdf"
-    merge(made, full)
-    print(f"\nВесь курс одним файлом: {full.name}  {full.stat().st_size // 1024} КБ")
+    merge([made[p["slug"]] for p in kurs.book(**SHOWCASE)], full)
+    print(f"\nПоказательная сборка ({SHOWCASE['goal']} · {SHOWCASE['sex']}): "
+          f"{full.name}  {full.stat().st_size // 1024} КБ")
 
     if warnings:
         print("\nПереполнение — контент обрежется молча:")

@@ -299,6 +299,59 @@ def results_html() -> str:
       Эдуард считать умеет.</p>"""
 
 
+# Шесть учеников из инстаграма Эдуарда. Ссылки ведут на его же посты, где
+# ученик говорит сам — на видео. Здесь стоят не слова учеников, а слова
+# Эдуарда о них: подписи к постам отдаёт oEmbed без авторизации, а звук
+# из видео вытащить нечем. Поэтому блок подписан как «мои ученики»,
+# а не как отзывы, и каждая карточка ведёт туда, где человек говорит сам.
+#
+# Ни одного факта здесь нет сверх того, что стоит в подписи к посту.
+# Проверить любой можно по ссылке рядом — на этом блок и держится.
+STUDENTS = [
+    ("Д", "Дмитрий Матягин", "тренер и реабилитолог",
+     "Девять лет вместе. Раньше были проблемы с дисциплиной и с тем, чего он "
+     "вообще хочет. Теперь есть и цель, и дисциплина — и в тренировках, "
+     "и в питании.",
+     "https://www.instagram.com/p/DD4gSL4ipgB/"),
+    ("В", "Виктория", "тренер и спортсменка со стажем",
+     "Работали дистанционно, полностью онлайн. Делала всё, что я говорю, "
+     "от питания до тренировок — и это при своём стаже. Взяла чемпионат "
+     "«Самые сильные ягодицы Тюмени».",
+     "https://www.instagram.com/p/DEmBuzbi6cg/"),
+    ("И", "Ира Колесникова", "директор, мама двоих сыновей",
+     "Ни одного пропущенного приёма пищи и ни одной пропущенной тренировки "
+     "за всё время — при её загрузке. Пришла от именитых тренеров и сказала, "
+     "что это небо и земля.",
+     "https://www.instagram.com/p/DD1_qfYC2TU/"),
+    ("И", "Инна Князьнеделева", "пришла похудеть",
+     "Была уверена, что для похудения надо голодать. Оказалось наоборот: есть "
+     "надо много, просто правильно и сбалансированно. Самое сложное тут "
+     "не тренировки, а работа с головой.",
+     "https://www.instagram.com/p/DEDPC0jiqa6/"),
+    ("Г", "Герман", "мой ученик",
+     "Про то, как быть в форме не к лету, а всегда.",
+     "https://www.instagram.com/reel/DEZUZ_jCLxX/"),
+    ("А", "Алексей", "мой ученик",
+     "Рассказывает сам, на видео.",
+     "https://www.instagram.com/reel/DGD9Trxoy1S/"),
+]
+
+
+def students_html() -> str:
+    cards = "".join(
+        f'<li class="rv">'
+        f'<div class="rv-top">{avatar_svg(letter)}'
+        f'<div><b>{name}</b><div class="rv-res">{role}</div></div></div>'
+        f"<p>{text}</p>"
+        f'<a class="rv-link" href="{url}" target="_blank" rel="noopener">'
+        f"Отзыв целиком — в инстаграме</a></li>"
+        for letter, name, role, text, url in STUDENTS)
+    return (
+        '<p class="rv-note">Это мои слова о них. Сам отзыв каждый говорит '
+        'на видео — по ссылке под карточкой.</p>'
+        f'<ul class="rv-list">{cards}</ul>')
+
+
 def reviews_html() -> str:
     cards = "".join(
         f'<li class="rv">'
@@ -413,8 +466,8 @@ def slide_decide(interactive: bool) -> str:
     <div class="col">
       {results_html()}
 
-      <p class="eyebrow" style="margin-top:26px">Как это проходит</p>
-      <div class="reviews">{reviews_html()}</div>
+      <p class="eyebrow" style="margin-top:26px">Кого я веду</p>
+      <div class="reviews">{students_html()}</div>
 
       <!-- ЗАГЛУШКА. В макете тут число прошедших и оценка. В спеке таких
            данных нет, поэтому цифры не выдуманы — подставь свои или удали
@@ -565,6 +618,10 @@ h1,h2,h3{font-weight:800;letter-spacing:-.04em;line-height:1.06;text-wrap:balanc
 .rv-top b{font:700 15px/1.25 'Manrope',sans-serif;color:var(--text)}
 .rv-res{font:600 12.5px/1.35 'Inter',sans-serif;color:var(--accent-hi);margin-top:3px}
 .rv p{font-size:14.5px;line-height:1.55;color:var(--text-3)}
+.rv-link{display:inline-block;margin-top:11px;color:var(--accent-hi);
+  font:600 13px 'Inter',sans-serif;text-decoration:none;
+  border-bottom:1px solid rgba(244,54,61,.35);padding-bottom:1px}
+.rv-link:hover{border-bottom-color:var(--accent-hi)}
 
 .rz-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .rz{position:relative;margin:0;border-radius:14px;overflow:hidden;

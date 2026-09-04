@@ -245,9 +245,8 @@ def avatar_svg(letter: str) -> str:
 # Своих цифр мы не добавляем: придумать срок к чужой фотографии нельзя.
 #
 # Согласие клиентов на публичный показ подтвердил владелец.
-RESULTS = ["do-posle-74-54", "do-posle-136-105", "do-posle-106-85",
-           "do-posle-70-62", "do-posle-137-120", "do-posle-chempion",
-           "do-posle-podrostok", "do-posle-spina"]
+RESULTS = ["do-posle-74-54", "do-posle-106-85", "do-posle-70-62",
+           "do-posle-137-120", "do-posle-chempion", "do-posle-podrostok"]
 
 PHOTO_DIR = HERE.parent / "serbolin-pdf" / "assets" / "photo"
 

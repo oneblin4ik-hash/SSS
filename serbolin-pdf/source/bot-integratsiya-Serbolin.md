@@ -47,7 +47,14 @@
 
 ## 2. Где хостить и как запускать
 
-Mini App — статика. Подойдёт любой https-хостинг: Cloudflare Pages, Netlify, nginx на своём сервере. Один файл, шрифты с Google Fonts.
+Mini App — статика. Один файл, шрифты с Google Fonts.
+
+**Выложен: `https://serbolin-kviz.pages.dev/`** — Cloudflare Pages, проект
+`serbolin-kviz`, собирается из ветки репозитория, папка `quiz-test/dist`.
+Файл туда кладёт `quiz-test/build_deploy.py`; правка квиза доезжает
+до боевого адреса сама, после пуша.
+
+Этот адрес идёт в `WebAppInfo(url=…)` и больше нигде не нужен.
 
 **Два способа запуска, и они по-разному отдают результат:**
 

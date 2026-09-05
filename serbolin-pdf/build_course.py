@@ -45,9 +45,13 @@ FONT_FILES = [
     ("JetBrains Mono", 500),
 ]
 
-PRICE = "690 ₽"
-PRICE_WAS = "1\u2009990 ₽"
+PRICE = "1\u2009890 ₽"
 SLOGAN = "Терпение + Дисциплина = Результат"
+# Бот-калькулятор КБЖУ: кнопка «Посчитать свои КБЖУ» в уроке дня 1. Отсюда
+# ссылку берёт и симулятор чата — константа одна на обе сборки. Обнулишь —
+# кнопка нарисуется неактивной и подписанной «ссылка не подключена», чтобы
+# дырка была видна, а не терялась.
+CALC_URL = "https://t.me/MoyaNormaBot"
 
 
 # ─────────────────────────── разбор спеки ───────────────────────────
@@ -66,16 +70,94 @@ def cap(text: str) -> str:
     return text[:1].upper() + text[1:] if text else text
 
 
+EMOJI_RE = re.compile(
+    "([\U0001F300-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF])(?!\ufe0f)")
+
+
 def inline(text: str) -> str:
-    """**жирный** и экранированные подчёркивания спеки → HTML."""
+    """**жирный** и экранированные подчёркивания спеки → HTML.
+
+    Заодно каждому эмодзи дописывается VS16: без него браузер берёт
+    текстовое начертание из основного шрифта, и вместо цветной тарелки
+    выходит контурный значок.
+    """
     text = html.escape(text.strip())
+    text = EMOJI_RE.sub(lambda m: m.group(1) + "\ufe0f", text)
     text = text.replace("\\_", "_")
     text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
     return text
 
 
+# Абзац урока может уходить только части читателей. В спеке это метка в начале
+# строки; здесь она превращается в поле рядом с текстом. Осей две и они
+# независимы: цель (питание) и пол (физиология).
+GOAL_MARKS = {"[дефицит]": "cut", "[профицит]": "gain"}
+SEX_MARKS = {"[ж]": "f", "[м]": "m"}
+PLACE_MARKS = {"[дом]": "home", "[зал]": "gym"}
+GOALS = ("cut", "gain")
+# Дни, где питание расходится по цели. Тренировки и психология общие.
+GOAL_DAYS = (2, 3, 6, 7, 8, 10)
+# Дни, где расходится физиология. Их мало намеренно: пол меняет программу
+# тренировок и цифры прогноза, а в тексте уроков — почти ничего.
+SEX_DAYS = (7,)
+# Дни тренировок. Место занятий меняет и комплекс на странице, и сам урок:
+# «20 минут дома без оборудования» человеку с абонементом не подходит.
+PLACE_DAYS = (4, 9, 11, 13)
+
+
+def for_reader(lesson: list[tuple[str | None, str | None, str | None, str]],
+               goal: str, sex: str = "f", place: str = "home") -> list[str]:
+    """Абзацы урока для одного читателя: общие плюс его собственные."""
+    return [html for g, x, pl, html in lesson
+            if (g is None or g == goal) and (x is None or x == sex)
+            and (pl is None or pl == place)]
+
+
+GOAL_LABEL = {"cut": "тем, кто худеет", "gain": "тем, кто набирает массу"}
+SEX_LABEL = {"f": "женщинам", "m": "мужчинам"}
+PLACE_LABEL = {"home": "тем, кто дома", "gym": "тем, кто в зале"}
+
+
+def cta(label: str) -> str:
+    """Кнопка бота внутри урока. Ссылка есть только у калькулятора КБЖУ."""
+    if "КБЖУ" in label and CALC_URL:
+        return (f'<p class="cta"><a href="{CALC_URL}" target="_blank" '
+                f'rel="noopener">{label}</a></p>')
+    return (f'<p class="cta"><span>{label}</span>'
+            f'<span class="tbd">ссылка не подключена</span></p>')
+
+
+def lesson_para(goal: str | None, sex: str | None, place: str | None,
+                body: str) -> str:
+    """Абзац урока. Развилка видна прямо в тексте.
+
+    Здесь, в отличие от бота, показываем обе ветки сразу: этот файл нужен,
+    чтобы прочитать курс целиком и увидеть, где он расходится. Человеку в
+    чат уходит только своя половина.
+
+    Строка вида **[ Посчитать свои КБЖУ ]** — не абзац, а кнопка бота.
+    Рисуем её кнопкой и здесь, чтобы читатель видел то же, что увидит
+    человек в чате.
+    """
+    key = re.fullmatch(r"<b>\[(.+?)\]</b>", body.strip())
+    if key:
+        return cta(key.group(1).strip())
+    if goal is None and sex is None and place is None:
+        return f"<p>{body}</p>"
+    tags = [GOAL_LABEL[goal]] if goal else []
+    tags += [SEX_LABEL[sex]] if sex else []
+    tags += [PLACE_LABEL[place]] if place else []
+    cls = " ".join(x for x in (goal, sex and "sex", place) if x)
+    return (f'<p class="fork {cls}"><span class="tag">{" · ".join(tags)}</span>'
+            f"{body}</p>")
+
+
 def parse() -> list[dict]:
-    """Уроки, задания и описания страниц по дням — из markdown спеки."""
+    """Уроки, задания и описания страниц по дням — из markdown спеки.
+
+    Абзац урока приходит парой «цель, текст»: None — общий для всех,
+    cut — только худеющим, gain — только набирающим массу.
+    """
     lines = SOURCE.read_text(encoding="utf-8").split("\n")
     days: list[dict] = []
     cur: dict | None = None
@@ -109,11 +191,61 @@ def parse() -> list[dict]:
             mode = None
         elif mode == "lesson" and ln.startswith(">"):
             para = ln.lstrip("> ").strip()
-            if para:
-                cur["lesson"].append(inline(para))
+            if not para:
+                continue
+            goal = sex = place = None
+            # Меток может быть несколько подряд: «[профицит] [ж] …».
+            axes = {"goal": None, "sex": None, "place": None}
+            for marks, axis in ((GOAL_MARKS, "goal"), (SEX_MARKS, "sex"),
+                                (PLACE_MARKS, "place")):
+                for mark, code in marks.items():
+                    if para.startswith(mark):
+                        para = para[len(mark):].strip()
+                        axes[axis] = code
+                        break
+            goal, sex, place = axes["goal"], axes["sex"], axes["place"]
+            # Строки списка продуктов («• Курица») склеиваются в один абзац
+            # через перенос: в чате и на странице должен получиться столбик,
+            # а не десяток отдельных абзацев с интервалами между ними.
+            # Метку цели строка списка наследует у абзаца, под которым идёт, —
+            # писать её в каждом пункте было бы шумно.
+            if para.startswith("•"):
+                item = inline(para.lstrip("• ").strip())
+                prev = cur["lesson"][-1] if cur["lesson"] else None
+                if prev:
+                    goal = goal if goal is not None else prev[0]
+                    sex = sex if sex is not None else prev[1]
+                    place = place if place is not None else prev[2]
+                if (prev and prev[3].startswith('<span class="li">')
+                        and prev[:3] == (goal, sex, place)):
+                    cur["lesson"][-1] = (goal, sex, place,
+                                         prev[3] + f'<span class="li">{item}</span>')
+                else:
+                    cur["lesson"].append(
+                        (goal, sex, place, f'<span class="li">{item}</span>'))
+            else:
+                cur["lesson"].append((goal, sex, place, inline(para)))
 
     if len(days) != 14:
         raise SystemExit(f"в спеке найдено {len(days)} дней вместо 14")
+
+    # Развилка по цели живёт в шести днях питания. Если метка потеряется при
+    # правке текста, набирающий массу молча получит урок худеющего — поймать
+    # это глазами почти невозможно, поэтому проверяем на сборке.
+    #
+    # Требуем не обе ветки, а хотя бы одну: дням 8 и 10 общий текст подходит
+    # худеющему как есть, и набор просто дописывает к нему абзац. А вот метка
+    # в дне, который сборки не разводят, — точно ошибка: её никто не покажет.
+    for n, d in enumerate(days, 1):
+        for axis, idx, allowed in (("по цели", 0, GOAL_DAYS),
+                                   ("по полу", 1, SEX_DAYS),
+                                   ("по месту", 2, PLACE_DAYS)):
+            marks = {m[idx] for m in d["lesson"] if m[idx]}
+            if n in allowed and not marks:
+                raise SystemExit(f"день {n}: развилка {axis} пропала")
+            if n not in allowed and marks:
+                raise SystemExit(
+                    f"день {n}: метка {axis} {marks} есть, а день не в списке")
     return days
 
 
@@ -136,7 +268,13 @@ def font_css() -> str:
     return "".join(faces)
 
 
-def sheet_slug(day: int) -> str:
+# Суффикс страниц под набор массы. Вынесен в константу, потому что по нему
+# фильтруют глоб сразу в двух сборках: дефис сортируется раньше точки, и без
+# фильтра `tripvaer-03-...-nabor.png` встаёт первым и подменяет основную версию.
+GAIN_SUFFIX = "-nabor"
+
+
+def sheet_slug(day: int, goal: str = "cut") -> str:
     """Имя растра страницы дня.
 
     Для дня 0 маска `tripvaer-00-*` поймала бы ещё и обложки комплекта
@@ -144,9 +282,14 @@ def sheet_slug(day: int) -> str:
     """
     if day == 0:
         return "tripvaer-00-pered-startom"
-    hits = sorted(PREVIEW.glob(f"tripvaer-{day:02d}-*.png"))
+    want_gain = goal == "gain"
+    hits = sorted(
+        h for h in PREVIEW.glob(f"tripvaer-{day:02d}-*.png")
+        if h.stem.endswith(GAIN_SUFFIX) == want_gain
+    )
     if not hits:
-        raise SystemExit(f"нет превью дня {day} — прогони preview.py")
+        what = "под набор массы " if want_gain else ""
+        raise SystemExit(f"нет превью {what}дня {day} — прогони preview.py")
     return hits[0].stem
 
 
@@ -254,7 +397,25 @@ img{{max-width:100%;display:block}}
 
 .lesson{{margin-top:26px;max-width:66ch}}
 .lesson p{{margin:0 0 15px}}
+.lesson p.fork{{border-left:2px solid var(--line-2);padding-left:15px;margin-left:1px}}
+.lesson p.fork.gain{{border-left-color:var(--accent)}}
+.lesson p.fork.sex{{border-left-style:dashed}}
+.lesson p.fork .tag{{display:block;font:600 10px/1 'Inter',sans-serif;letter-spacing:1.6px;text-transform:uppercase;color:var(--text-4);margin-bottom:7px}}
+.lesson p.fork.gain .tag{{color:var(--accent-hi)}}
+/* Столбик продуктов: строки идут плотнее обычных абзацев, с алой точкой. */
+.lesson .li{{display:block;padding-left:16px;position:relative;line-height:1.75}}
+.lesson .li::before{{content:"";position:absolute;left:2px;top:.72em;width:5px;height:5px;
+  border-radius:999px;background:var(--accent)}}
 .lesson p:first-child{{font-size:19px;line-height:1.5;color:var(--text)}}
+.lesson p.cta{{margin:20px 0 15px}}
+.lesson p.cta a,.lesson p.cta span{{display:inline-block;padding:12px 22px;
+  border-radius:999px;font-weight:600;font-size:15px;text-decoration:none;
+  background:var(--accent);color:#fff}}
+.lesson p.cta a:hover{{background:var(--accent-hi)}}
+.lesson p.cta span{{background:transparent;color:var(--text-4);
+  border:1px dashed var(--line-2)}}
+.lesson p.cta .tbd{{display:block;margin-top:7px;padding:0;border:0;
+  font:400 12px/1 'Inter',sans-serif;color:var(--text-4)}}
 
 .task{{margin-top:30px;background:var(--plate);border-radius:var(--r);
   padding:22px 24px;border-left:3px solid var(--accent)}}
@@ -401,7 +562,7 @@ def build_body(days: list[dict]) -> str:
     panes = [intro_pane()]
     for d in days:
         lv = theme.level_for_day(d["n"])
-        lesson = "".join(f"<p>{p}</p>" for p in d["lesson"])
+        lesson = "".join(lesson_para(*m) for m in d["lesson"])
         star = " " + emoji("⭐") if d["star"] else ""
         slug = sheet_slug(d["n"])
         panes.append(f"""
@@ -432,12 +593,12 @@ def build_body(days: list[dict]) -> str:
       <div class="bt">Эдуард Серболин<span>онлайн-тренер</span></div>
     </div>
     <div class="eyebrow">Курс · 14 дней</div>
-    <h1>План<br>на первые 14 дней</h1>
-    <p class="sub">Один короткий урок в день и одно действие. Каждое утро бот
+    <h1>Первые шаги<br>к форме</h1>
+    <p class="sub">14 дней — с чего начать и как не бросить. Каждое утро бот
     присылает урок, задание и страницу дня в PDF. Вечером — чек-ин одной
     кнопкой: сделал или не вышло.</p>
     <div class="meta">
-      <div class="price">{PRICE}<span><s>{PRICE_WAS}</s> дальше будет столько · бери, пока не подняли</span></div>
+      <div class="price">{PRICE}<span>один раз, навсегда твоё · без подписки и доплат</span></div>
       <div class="slogan">{SLOGAN}</div>
     </div>
   </div>
@@ -465,7 +626,7 @@ def main() -> None:
     page = (
         '<!doctype html><html lang="ru"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        "<title>План на первые 14 дней</title>"
+        "<title>Первые шаги к форме</title>"
         f"{style}</head><body>{body}<script>{JS}</script></body></html>"
     )
     full = OUT / "kurs-14-dney.html"
@@ -477,18 +638,25 @@ def main() -> None:
     # называется вкладка, и он ищется в первых 8 КБ файла.
     art = OUT / "kurs-14-dney-artifact.html"
     art.write_text(
-        "<title>План на первые 14 дней</title>\n"
+        "<title>Первые шаги к форме</title>\n"
         f"{style}\n{body}\n<script>{JS}</script>",
         encoding="utf-8",
     )
     print(f"  {art.name} ({art.stat().st_size // 1024} КБ)")
 
+    # Ищем то, что страница грузит. Ссылка в <a> — переход по клику, а не
+    # загрузка: CSP её не режет, поэтому она считается отдельно.
+    links: list[str] = []
     for f in (full, art):
         text = f.read_text(encoding="utf-8")
-        outside = re.findall(r'(?:src|href)="(?!data:|#)([^"]+)"', text)
+        tags = re.findall(r'<(\w+)[^>]*?(?:src|href)="(?!data:|#)([^"]+)"', text)
+        outside = [u for tag, u in tags if tag.lower() != "a"]
+        links += [u for tag, u in tags if tag.lower() == "a"]
         if outside:
             raise SystemExit(f"{f.name}: внешние ресурсы {outside[:3]} — CSP их срежет")
     print("Внешних ресурсов нет — CSP артефакта не помешает.")
+    for u in dict.fromkeys(links):
+        print("  ссылка по клику:", u)
 
 
 if __name__ == "__main__":

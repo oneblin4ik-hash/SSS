@@ -1,0 +1,30 @@
+name = "serbolin-bot"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# Логи в панели Cloudflare. Без этого console.error из воркера уходит
+# в никуда, и разбирать сбой будет нечем.
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "serbolin-bot"
+database_id = "f841356f-59dc-4bea-9cd3-98bb82118b75"
+
+[vars]
+# Канал, на который проверяем подписку. Публичный, поэтому хватает
+# юзернейма. Если канал когда-нибудь станет приватным — сюда пойдёт
+# числовой id вида -1001234567890: у приватного канала юзернейма нет.
+CHANNEL = "@Serbolin"
+
+# Ссылка на кнопке «Подписаться на канал». Держим отдельно от CHANNEL:
+# у приватного канала это будет инвайт-ссылка, а не адрес.
+CHANNEL_URL = "https://t.me/Serbolin"
+
+# Mini App с тестом. Cloudflare Pages, собирается из этой же ветки,
+# папка quiz-test/dist.
+QUIZ_URL = "https://serbolin-kviz.pages.dev/"
+
+# BOT_TOKEN и WEBHOOK_SECRET сюда не пишем — это секреты, они кладутся
+# командой `wrangler secret put` и в репозиторий не попадают. См. README.

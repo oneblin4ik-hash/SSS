@@ -5,19 +5,44 @@
 (схема описана в source/bot-integratsiya-Serbolin.md, раздел 3). Никакого
 второго формата данных не заводим: что бот получил — то и передал сюда.
 
-Вся производная логика (ИМТ, тип срыва, число тренировок, прогноз) повторяет
+Вся производная логика (ИМТ, тип старта, число тренировок, прогноз) повторяет
 app/kviz-serbolin.html один в один. Это принципиально: PDF человек открывает
 через минуту после экрана диагностики, и цифры обязаны совпасть. Если логика
 в квизе меняется — правится и здесь, оба места помечены ссылками на функции
 оригинала.
+
+Схема payload — v2. Ось сегментации теперь опыт (never | quit | onoff),
+а не точка срыва: ветка про срывы из теста убрана целиком.
 """
 from dataclasses import dataclass, field
 from datetime import date, timedelta
+from math import floor
+
+# Повторяют TR_BY_FREQ и PACE_BY_TR из квиза. Реже тренируешься — дольше
+# идёшь: показывать один и тот же срок при одной и при четырёх тренировках
+# в неделю было бы обманом.
+TR_BY_FREQ = {"1": 1, "2": 2, "3": 3, "4+": 4}
+PACE_BY_TR = {1: 1.3, 2: 1.0, 3: 0.9, 4: 0.85}
 
 MONTHS_GEN = [
     "января", "февраля", "марта", "апреля", "мая", "июня",
     "июля", "августа", "сентября", "октября", "ноября", "декабря",
 ]
+
+
+_RATE = {
+    "m": {"gain": 0.35, "loss_big": 0.7, "loss": 0.55},
+    "f": {"gain": 0.2, "loss_big": 0.55, "loss": 0.45},
+}
+
+
+def _round_half_up(x: float) -> int:
+    """Math.round() из JS: 0.5 округляется вверх, а не к чётному.
+
+    round() в Python банковский — round(2.5) == 2, и на границах прогноз
+    в PDF расходился бы с экраном на неделю.
+    """
+    return int(floor(x + 0.5))
 
 
 def ru_date(d: date) -> str:
@@ -33,19 +58,28 @@ class Profile:
     height: int                     # h  — см
     weight_now: float               # w  — кг
     weight_goal: float              # wg — кг
-    goal: str                       # gl — loss | mass | tone | power
+    goal: str                       # gl — loss | mass | tone
+    place: str                      # pl — home | gym | any («ещё не решил» → дом)
+    zone: str = "all"               # zn — belly | legs | top | back | all
     form_now: int = 0               # fn — 0…5
     form_goal: int = 0              # fg — 0…5
-    life: str = "sit"               # lf — sit | some | reg | much
-    attempts: str = "1"             # at — 1 | 2-3 | 4-6 | many
-    break_point: str = "days"       # bp — days | week | 2-3w | month | none
-    breakers: list[str] = field(default_factory=list)   # br
+    exp: str = "never"              # ex — never | quit | onoff
+    last: str = "long"              # ls — m1 | m6 | y1 | long
+    did: str = "home"               # dd — gym | home | cardio | group | diet | sport
+    mins: str = "30"                # mn — 15 | 30 | 45 | 90
+    freq: str = "2"                 # fq — 1 | 2 | 3 | 4+
     health: list[str] = field(default_factory=list)     # hl
     issued: date = field(default_factory=date.today)
 
     # ── согласование по роду ────────────────────────────────
     # Тот же приём, что f() в квизе (строка 234): одна функция, оба варианта
     # рядом, чтобы при правке текста нельзя было забыть про мужской род.
+    @property
+    def at_gym(self) -> bool:
+        """«Ещё не решил» ведёт в домашний вариант: начать дома можно сегодня,
+        а перейти в зал получится в любой момент."""
+        return self.place == "gym"
+
     def f(self, fem: str, masc: str) -> str:
         return fem if self.gender == "f" else masc
 
@@ -70,28 +104,25 @@ class Profile:
     def chart_mode(self) -> str:
         """Повторяет chartMode() из квиза."""
         d = abs(self.weight_now - self.weight_goal)
-        if self.goal in ("tone", "power"):
+        if self.goal == "tone":
             return "weight" if d >= 4 else "form"
         return "weight" if d >= 2 else "form"
 
     @property
-    def type_n(self) -> int:
-        """Повторяет typeOf(). Порядок проверок жёсткий: точка срыва сильнее
-        образа жизни — этот баг уже ловили, см. CLAUDE.md."""
-        if self.break_point == "none":
-            return 3
-        if self.break_point in ("2-3w", "month") or self.attempts in ("4-6", "many"):
-            return 4
-        if self.break_point == "days" or self.attempts == "1":
-            return 1
-        if self.life in ("reg", "much"):
-            return 3
-        return 2
+    def type_code(self) -> str:
+        """Повторяет typeOf(). Порядок проверок жёсткий: «бросил, но последний
+        раз меньше месяца назад» — это не длинная пауза, а те же урывки, и
+        разбор человеку нужен другой."""
+        if self.exp == "never":
+            return "never"
+        if self.exp == "quit" and self.last == "m1":
+            return "onoff"
+        return self.exp or "never"
 
     @property
     def trainings(self) -> int:
-        """Повторяет tr из plan()."""
-        return 2 if self.life in ("sit", "some") else 3
+        """Повторяет trainings(): число берётся из прямого ответа про частоту."""
+        return TR_BY_FREQ.get(self.freq, 2)
 
     @property
     def plan(self) -> dict:
@@ -102,18 +133,23 @@ class Profile:
         """
         gain = self.weight_goal > self.weight_now
         d_all = round(abs(self.weight_now - self.weight_goal), 1)
+        pace = PACE_BY_TR.get(self.trainings, 1.0)
 
         if self.chart_mode == "form":
             gap = max(1, abs(self.form_goal - self.form_now))
-            weeks = min(30, max(6, gap * 7))
+            weeks = max(6, _round_half_up(min(30, max(6, gap * 7)) * pace))
             return {"mode": "form", "weeks": weeks, "d": d_all, "gain": gain,
                     "stage": False, "stages": 1, "target": self.weight_goal}
 
-        rate = 0.35 if gain else (0.7 if d_all > 15 else 0.55)
+        # Один в один с RATE в квизе. При равном относительном дефиците
+        # мужчина теряет быстрее — больше сухой массы и суточный расход;
+        # на наборе разрыв почти двукратный. Меняешь тут — меняй и там.
+        r = _RATE.get(self.gender, _RATE["f"])
+        rate = r["gain"] if gain else (r["loss_big"] if d_all > 15 else r["loss"])
         cap = max(4, round(self.weight_now * 0.1))
         stage = (not gain) and d_all > cap and d_all > 12
         d = cap if stage else d_all
-        weeks = max(4, min(40, round(d / rate) or 6))
+        weeks = max(4, min(44, _round_half_up(d / rate * pace) or 6))
         return {
             "mode": "weight", "weeks": weeks, "d": d, "gain": gain,
             "stage": stage,
@@ -143,7 +179,7 @@ class Profile:
 
     @classmethod
     def from_quiz(cls, payload: dict) -> "Profile":
-        """Собирает профиль из JSON квиза (ключи как в sendData)."""
+        """Собирает профиль из JSON квиза (ключи как в sendData, схема v2)."""
         return cls(
             name=payload["n"],
             gender=payload.get("g", "f"),
@@ -152,11 +188,14 @@ class Profile:
             weight_now=payload["w"],
             weight_goal=payload["wg"],
             goal=payload.get("gl", "loss"),
+            place=payload.get("pl", "home"),
+            zone=payload.get("zn") or "all",
             form_now=payload.get("fn", 0),
             form_goal=payload.get("fg", 0),
-            life=payload.get("lf", "sit"),
-            attempts=payload.get("at", "1"),
-            break_point=payload.get("bp", "days"),
-            breakers=payload.get("br", []),
+            exp=payload.get("ex") or "never",
+            last=payload.get("ls") or "long",
+            did=payload.get("dd") or "home",
+            mins=payload.get("mn") or "30",
+            freq=payload.get("fq") or "2",
             health=payload.get("hl", []),
         )

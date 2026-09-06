@@ -77,9 +77,16 @@ schema.sql        таблицы
 Нужен Node. Всё делается из папки `bot/`.
 
 ```bash
-npm install -g wrangler        # один раз
-wrangler login                 # откроет браузер, попросит разрешить доступ
+npm install                    # ставит wrangler из package.json
+npx wrangler login             # откроет браузер, попросит разрешить доступ
 ```
+
+Дальше во всех командах ниже — `npx wrangler`, а не просто `wrangler`.
+
+**Через панель Cloudflare, без терминала.** Воркер умеет собираться прямо
+из репозитория: Compute → Create → Workers → Import a repository, ветка
+и `Root directory = bot`. Тогда весь терминал сводится к нулю, а секреты
+кладутся в Settings → Variables and Secrets. Схема базы уже накачена.
 
 **1. Создать таблицы.** База уже заведена, `serbolin-bot`, её id прописан
 в `wrangler.toml`.

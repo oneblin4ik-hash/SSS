@@ -9,9 +9,10 @@
  * оффер, заявка в личку, выдача курса и четырнадцать джобов на 8:00.
  */
 import { welcome, SUB_OK, SUB_MISSING, BTN_SUBSCRIBE, BTN_SUB_CHECK,
-         BTN_QUIZ, QUIZ_RECEIVED_STUB } from "./texts.js";
+         BTN_QUIZ } from "./texts.js";
 import { sendMessage, answerCallback, isSubscribed } from "./telegram.js";
-import { upsertUser, logEvent, saveQuiz } from "./db.js";
+import { upsertUser, logEvent, saveQuiz, getUser, getQuiz } from "./db.js";
+import * as day0 from "./day0.js";
 
 /* Клавиатура с кнопкой Mini App. Именно reply-keyboard, а не меню и не
    inline: только из неё работает sendData, и результат теста приходит
@@ -102,8 +103,9 @@ async function onQuizDone(env, msg) {
   await saveQuiz(env.DB, uid, payload);
   await logEvent(env.DB, uid, "quiz_done", { t: payload.t ?? null, ex: payload.ex ?? null });
 
-  const name = payload.n || msg.from.first_name || "";
-  await sendMessage(env.BOT_TOKEN, msg.chat.id, QUIZ_RECEIVED_STUB(name));
+  // Дальше сразу «День 0»: пауза между тестом и первым заданием — это
+  // место, где человек закрывает чат и не возвращается.
+  await day0.begin(env, msg.chat.id, uid, payload);
 }
 
 async function handleUpdate(env, update) {
@@ -112,6 +114,17 @@ async function handleUpdate(env, update) {
   if (msg?.text?.startsWith("/start")) return onStart(env, msg);
   if (update.callback_query?.data === "sub_check") {
     return onSubCheck(env, update.callback_query);
+  }
+
+  // Обычный текст имеет смысл только внутри диалога «Дня 0». Всё
+  // остальное молча пропускаем: человек пишет Эдуарду в личку, а не боту,
+  // и отвечать на «привет» автоматом — значит делать вид, что бот живой.
+  if (msg?.text) {
+    const user = await getUser(env.DB, msg.from.id);
+    if (day0.stepOf(user?.state)) {
+      const payload = await getQuiz(env.DB, msg.from.id);
+      if (payload) return day0.answer(env, msg, user.state, payload);
+    }
   }
 }
 

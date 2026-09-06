@@ -40,3 +40,25 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE INDEX IF NOT EXISTS events_user  ON events (user_id, at);
 CREATE INDEX IF NOT EXISTS events_kind  ON events (event, at);
+
+-- «День 0»: четыре ответа свободным текстом. Храним и сырой ответ, и то,
+-- что удалось из него разобрать. Разобрать выходит не всегда — человек
+-- пишет «встал в семь, лёг в полночь», — и тогда в карточке стоит его
+-- собственная фраза, а не выдуманное нами число.
+CREATE TABLE IF NOT EXISTS day0 (
+  user_id      INTEGER PRIMARY KEY,
+  sleep_raw    TEXT,      -- ответ на вопрос про подъём и отбой, как есть
+  wake         TEXT,      -- разобранное время подъёма, если вышло
+  sleep        TEXT,      -- разобранное время отбоя, если вышло
+  hours        REAL,      -- часов сна, если удалось посчитать
+  windows_raw  TEXT,      -- ответ про свободные окна, как есть
+  window1      TEXT,
+  window2      TEXT,
+  hunger_time  TEXT,      -- зона риска
+  dinner_txt   TEXT,      -- что ел вчера после 19:00
+  done_at      TEXT
+);
+
+-- Состояние диалога: на каком вопросе «Дня 0» человек стоит.
+-- NULL — диалога нет. Отдельной таблицы не заводим, шаг всего один.
+ALTER TABLE users ADD COLUMN state TEXT;

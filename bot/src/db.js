@@ -49,3 +49,20 @@ export async function saveQuiz(db, userId, payload) {
       .bind(userId, payload.n ?? null, payload.g ?? null),
   ]);
 }
+
+/** Человек и его состояние диалога. */
+export const getUser = (db, userId) =>
+  db.prepare(`SELECT * FROM users WHERE user_id = ?1`).bind(userId).first();
+
+/** Результат теста, разобранный обратно в объект. Нужен почти везде:
+ *  на нём стоит и род в текстах, и ветка курса, и выбор файла программы. */
+export async function getQuiz(db, userId) {
+  const row = await db.prepare(`SELECT payload FROM quiz WHERE user_id = ?1`)
+    .bind(userId).first();
+  if (!row) return null;
+  try {
+    return JSON.parse(row.payload);
+  } catch {
+    return null;
+  }
+}

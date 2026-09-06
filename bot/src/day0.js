@@ -9,8 +9,7 @@ import { sendMessage } from "./telegram.js";
 import { logEvent } from "./db.js";
 import { times, sleepHours, windows, hoursWord } from "./parse.js";
 import * as T from "./texts.js";
-import { offerText, OFFER_FOOTNOTE, BTN_CONTACT, contactUrl, shortCode }
-  from "./offer.js";
+import { offerText, OFFER_FOOTNOTE, BTN_CONTACT, shortCode } from "./offer.js";
 
 const STEPS = 4;
 export const stateFor = (step) => `day0_${step}`;   // day0_1 … day0_4
@@ -110,11 +109,13 @@ export async function finish(env, chatId, uid, payload) {
                     { parse_mode: "Markdown" });
 
   const code = await shortCode(uid);
+  // Кнопка с callback, а не ссылкой: по url-кнопке Telegram боту ничего
+  // не сообщает, и заявка потерялась бы. Почему так — в sale.js.
   await sendMessage(env.BOT_TOKEN, chatId,
     `${offerText(payload)}\n\n_${OFFER_FOOTNOTE}_`, {
       parse_mode: "Markdown",
       reply_markup: {
-        inline_keyboard: [[{ text: BTN_CONTACT, url: contactUrl(code) }]],
+        inline_keyboard: [[{ text: BTN_CONTACT, callback_data: "contact" }]],
       },
     });
   await logEvent(env.DB, uid, "offer_shown", { code });

@@ -13,6 +13,9 @@ import { welcome, SUB_OK, SUB_MISSING, BTN_SUBSCRIBE, BTN_SUB_CHECK,
 import { sendMessage, answerCallback, isSubscribed } from "./telegram.js";
 import { upsertUser, logEvent, saveQuiz, getUser, getQuiz } from "./db.js";
 import * as day0 from "./day0.js";
+import * as sale from "./sale.js";
+import { runDue, scheduleWarmup } from "./cron.js";
+import { UNSUB_DONE } from "./warmup.js";
 
 /* Клавиатура с кнопкой Mini App. Именно reply-keyboard, а не меню и не
    inline: только из неё работает sendData, и результат теста приходит
@@ -103,28 +106,57 @@ async function onQuizDone(env, msg) {
   await saveQuiz(env.DB, uid, payload);
   await logEvent(env.DB, uid, "quiz_done", { t: payload.t ?? null, ex: payload.ex ?? null });
 
+  // Догрев вешается прямо здесь, от момента окончания теста, а не после
+  // «Дня 0». Человек может бросить диалог на первом же вопросе — и тогда
+  // он тем более тот, кому надо написать через четыре часа.
+  await scheduleWarmup(env.DB, uid);
+
   // Дальше сразу «День 0»: пауза между тестом и первым заданием — это
   // место, где человек закрывает чат и не возвращается.
   await day0.begin(env, msg.chat.id, uid, payload);
+}
+
+async function onUnsub(env, cq) {
+  await env.DB.prepare(`UPDATE users SET unsub = 1 WHERE user_id = ?1`)
+    .bind(cq.from.id).run();
+  await sale.cancelWarmup(env.DB, cq.from.id);
+  await logEvent(env.DB, cq.from.id, "unsub");
+  await answerCallback(env.BOT_TOKEN, cq.id, "");
+  await sendMessage(env.BOT_TOKEN, cq.message.chat.id, UNSUB_DONE);
 }
 
 async function handleUpdate(env, update) {
   const msg = update.message;
   if (msg?.web_app_data) return onQuizDone(env, msg);
   if (msg?.text?.startsWith("/start")) return onStart(env, msg);
-  if (update.callback_query?.data === "sub_check") {
-    return onSubCheck(env, update.callback_query);
+  if (msg?.text?.startsWith("/waiting")) return sale.onWaiting(env, msg);
+  // Нужна ровно один раз, при настройке: свой id иначе негде взять.
+  if (msg?.text?.startsWith("/id")) {
+    return sendMessage(env.BOT_TOKEN, msg.chat.id, `Твой id: ${msg.from.id}`);
   }
 
-  // Обычный текст имеет смысл только внутри диалога «Дня 0». Всё
-  // остальное молча пропускаем: человек пишет Эдуарду в личку, а не боту,
-  // и отвечать на «привет» автоматом — значит делать вид, что бот живой.
+  const cq = update.callback_query;
+  if (cq) {
+    if (cq.data === "sub_check") return onSubCheck(env, cq);
+    if (cq.data === "contact") return sale.onContact(env, cq);
+    if (cq.data === "unsub") return onUnsub(env, cq);
+    const admin = /^(grant|decline):(\d+)$/.exec(cq.data || "");
+    if (admin) return sale.onAdminDecision(env, cq, admin[1], Number(admin[2]));
+    return;
+  }
+
   if (msg?.text) {
     const user = await getUser(env.DB, msg.from.id);
+    // Обычный текст имеет смысл внутри диалога «Дня 0».
     if (day0.stepOf(user?.state)) {
       const payload = await getQuiz(env.DB, msg.from.id);
       if (payload) return day0.answer(env, msg, user.state, payload);
     }
+    // Вне диалога человек просто написал боту. Отвечать автоматом
+    // не будем — это разговор с Эдуардом, а не с автоответчиком. Но
+    // догрев гасим: писать «ну что, надумал?» тому, кто уже пишет сам,
+    // значит показать, что его не слышат.
+    await sale.cancelWarmup(env.DB, msg.from.id);
   }
 }
 
@@ -154,5 +186,12 @@ export default {
       ),
     );
     return new Response("ok");
+  },
+
+  // Крон раз в четверть часа: догрев и напоминания о висящих заявках.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      runDue(env).catch((e) => console.error("cron failed:", e?.stack || e)),
+    );
   },
 };

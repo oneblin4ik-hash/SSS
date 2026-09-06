@@ -14,6 +14,7 @@
 import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import worker from "./src/index.js";
+import { runDue } from "./src/cron.js";
 
 /* ── база: настоящий SQLite за фасадом D1 ─────────────────────────────── */
 const sqlite = new DatabaseSync(":memory:");
@@ -56,6 +57,7 @@ const env = {
   CHANNEL: "@Serbolin",
   CHANNEL_URL: "https://t.me/Serbolin",
   QUIZ_URL: "https://serbolin-kviz.pages.dev/",
+  ADMIN_ID: "1",
 };
 
 const waited = [];
@@ -188,8 +190,9 @@ check(offer.text.includes("с щадящим вариантом под коле�
       "щадящий вариант обещан — человек отметил колени");
 check(offer.text.includes("1 890 ₽"), "цена на месте");
 const btn = offer.reply_markup.inline_keyboard[0][0];
-check(btn.url.startsWith("https://t.me/Mr_Serbolin?text="), "кнопка ведёт в личку");
-check(decodeURIComponent(btn.url).includes("Код "), "в сообщении есть код");
+// Кнопка с callback, а не ссылкой: по url-кнопке Telegram боту ничего
+// не сообщает, и заявка потерялась бы вместе со всей ручной продажей.
+check(btn.callback_data === "contact", "кнопка даёт боту событие, а не уводит молча");
 check(!!row("SELECT 1 a FROM events WHERE event='offer_shown'"), "событие offer_shown");
 
 /* ── 7. здоровье: сердце и диабет ─────────────────────────────────────── */
@@ -227,7 +230,107 @@ const card3 = sent()[0].body.text;
 check(card3.includes("встала рано, легла поздно"), "стоит фраза человека");
 check(!card3.includes("ч сна"), "часы не выдуманы");
 
-/* ── 9. битый payload ─────────────────────────────────────────────────── */
+/* ── 9. заявка ────────────────────────────────────────────────────────── */
+head("Догрев поставлен:");
+const jobs = sqlite.prepare(
+  "SELECT kind FROM jobs WHERE user_id=777 AND sent_at IS NULL ORDER BY due_at").all();
+check(jobs.length === 6, `шесть касаний в очереди (нашлось ${jobs.length})`);
+check(jobs[0].kind === "warm_4h" && jobs.at(-1).kind === "warm_30d",
+      "порядок от четырёх часов до месяца");
+
+head("Человек нажал «Написать Эдуарду»:");
+calls = [];
+await send({ callback_query: { id: "9", from, message: { chat }, data: "contact" } });
+const order = row("SELECT * FROM orders WHERE user_id=777");
+check(order?.status === "awaiting", "заявка заведена");
+check(!!row("SELECT 1 a FROM events WHERE event='contact_clicked'"), "событие записано");
+check(sqlite.prepare(
+  "SELECT count(*) c FROM jobs WHERE user_id=777 AND kind LIKE 'warm_%' AND sent_at IS NULL")
+  .get().c === 0, "догрев погашен — дальше разговор в личке");
+const admin = sent().find((c) => c.body.chat_id === "1");
+check(!!admin, "карточка ушла Эдуарду");
+check(admin.body.text.includes("Галина"), "имя из теста");
+check(admin.body.text.includes("Окна: 7:00 утра и 20:30 вечером"), "окна в карточке");
+check(admin.body.reply_markup.inline_keyboard[0].length === 2, "две кнопки решения");
+const toUser = sent().find((c) => c.body.chat_id === 777);
+check(toUser.body.reply_markup.inline_keyboard[0][0].url.includes("Mr_Serbolin"),
+      "человеку отдана ссылка в личку");
+check(!!row("SELECT 1 a FROM jobs WHERE kind='admin_ping' AND sent_at IS NULL"),
+      "напоминание через два часа поставлено");
+
+head("Нажал второй раз:");
+calls = [];
+await send({ callback_query: { id: "10", from, message: { chat }, data: "contact" } });
+check(!sent().some((c) => c.body.chat_id === "1"), "Эдуарда второй раз не будим");
+check(sqlite.prepare("SELECT count(*) c FROM jobs WHERE kind='admin_ping'").get().c === 1,
+      "второго напоминания не завели");
+
+head("Чужой нажал кнопку Эдуарда:");
+calls = [];
+await send({ callback_query: { id: "11", from, message: { chat },
+                               data: "grant:777" } });
+check(calls[0].body.text === "Это не твоя кнопка.", "отбито");
+check(row("SELECT status FROM orders WHERE user_id=777").status === "awaiting",
+      "статус не изменился");
+
+head("Эдуард включил курс:");
+calls = [];
+const adminFrom = { id: 1, first_name: "Эдуард" };
+await send({ callback_query: { id: "12", from: adminFrom,
+                               message: { chat: { id: 1 }, message_id: 5 },
+                               data: "grant:777" } });
+check(row("SELECT status FROM orders WHERE user_id=777").status === "paid",
+      "заявка закрыта как оплаченная");
+check(!!row("SELECT 1 a FROM events WHERE event='course_granted'"), "событие записано");
+check(!row("SELECT 1 a FROM jobs WHERE kind='admin_ping' AND sent_at IS NULL"),
+      "напоминание снято");
+
+head("/waiting:");
+calls = [];
+await send({ message: { from: adminFrom, chat: { id: 1 }, text: "/waiting" } });
+check(lastText().startsWith("Никто не ждёт"), "список пуст — заявку закрыли");
+
+/* ── 10. крон ─────────────────────────────────────────────────────────── */
+head("Крон и догрев:");
+// Аня заявку не оставляла — ей догрев положен.
+sqlite.prepare("UPDATE jobs SET due_at='2000-01-01T00:00:00.000Z' WHERE user_id=999").run();
+calls = [];
+await runDue(env);
+const warm = sent().filter((c) => c.body.chat_id === 999);
+check(warm.length >= 1, "касания ушли");
+check(warm[0].body.text.startsWith("Аня, карточка со стартовой точкой"),
+      "первое — через четыре часа после теста");
+const tail = warm.find((c) => c.body.text.startsWith("Аня, две недели назад"));
+check(!!tail, "хвост на четырнадцатый день дошёл");
+check(tail.body.reply_markup.inline_keyboard[0].some((b) => b.callback_data === "unsub"),
+      "в хвосте есть кнопка отписки");
+const byWindows = warm.find((c) => c.body.text.includes("Ты знаешь свою зону риска"));
+check(!!byWindows && byWindows.body.text.includes("Знаешь свои окна: утро"),
+      "окна не разобрались на два — подставлена фраза человека целиком");
+
+head("Тест прошёл, «День 0» бросил:");
+const from4 = { id: 555, first_name: "Олег" };
+await send({ message: { from: from4, chat: { id: 555 }, text: "/start" } });
+await send({ message: { from: from4, chat: { id: 555 },
+  web_app_data: { data: JSON.stringify({ ...payload, n: "Олег", g: "m" }) } } });
+sqlite.prepare("UPDATE jobs SET due_at='2000-01-01T00:00:00.000Z' WHERE user_id=555").run();
+calls = [];
+await runDue(env);
+const olegTexts = sent().filter((c) => c.body.chat_id === 555).map((c) => c.body.text);
+check(olegTexts.some((t) => t.startsWith("Олег, карточка")), "общие касания пришли");
+check(!olegTexts.some((t) => t.includes("Знаешь свои окна")),
+      "касание про окна пропущено: отвечать на «Дне 0» он не стал");
+check(!olegTexts.some((t) => t.includes("с теми двумя окнами")),
+      "и недельное тоже — без окон оно теряет смысл");
+
+head("Отписка:");
+calls = [];
+await send({ callback_query: { id: "13", from: { id: 999 },
+                               message: { chat: { id: 999 } }, data: "unsub" } });
+check(row("SELECT unsub FROM users WHERE user_id=999").unsub === 1, "флаг поставлен");
+check(lastText().startsWith("Понял, больше не пишу"), "ответ без обиды");
+
+/* ── 11. битый payload ────────────────────────────────────────────────── */
 head("Битый payload:");
 await send({ message: { from, chat, web_app_data: { data: "{не json" } } });
 check(!!row("SELECT 1 a FROM events WHERE event='quiz_broken'"), "записан как quiz_broken");

@@ -62,3 +62,29 @@ CREATE TABLE IF NOT EXISTS day0 (
 -- Состояние диалога: на каком вопросе «Дня 0» человек стоит.
 -- NULL — диалога нет. Отдельной таблицы не заводим, шаг всего один.
 ALTER TABLE users ADD COLUMN state TEXT;
+
+-- Заявки. Платёжной системы нет: человек пишет в личку, Эдуард называет
+-- реквизиты и включает курс руками. Заявка живёт, пока по ней не нажали
+-- одну из двух кнопок — по таймауту ничего не удаляем, иначе человек
+-- потеряется молча.
+CREATE TABLE IF NOT EXISTS orders (
+  user_id  INTEGER PRIMARY KEY,
+  code     TEXT NOT NULL,
+  status   TEXT NOT NULL,          -- awaiting | paid | declined
+  at       TEXT NOT NULL,
+  closed_at TEXT
+);
+
+-- Отложенные отправки: догрев и напоминание Эдуарду о висящей заявке.
+-- Крон раз в четверть часа забирает всё, чему пришёл срок.
+CREATE TABLE IF NOT EXISTS jobs (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id  INTEGER NOT NULL,
+  kind     TEXT NOT NULL,
+  due_at   TEXT NOT NULL,
+  sent_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS jobs_due ON jobs (due_at) WHERE sent_at IS NULL;
+
+-- Отписка от догрева. Кнопка обязана работать с первого нажатия.
+ALTER TABLE users ADD COLUMN unsub INTEGER DEFAULT 0;

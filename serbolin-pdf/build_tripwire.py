@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Собирает комплект трипваера «План на первые 14 дней»:
+Собирает комплект трипваера «Первые шаги к форме»:
 обложку и 14 отдельных PDF — по одному файлу на день, чтобы бот присылал
 страницу вместе с текстом урока.
 
@@ -20,7 +20,7 @@ from data import intro as intro_data
 from lib import components as c
 from lib import render, theme
 
-COURSE = "План на первые 14 дней"
+COURSE = "Первые шаги к форме"
 
 # Основная раскладка обложки. «Клин слева» — приём, который базовая
 # система прямо подписывает как «Герой товара, обложка». «Горизонт»
@@ -54,8 +54,8 @@ def _slug(text: str) -> str:
 
 # ─────────────────────────── страница дня ───────────────────────────
 
-def day_page(day: int) -> tuple[str, str, theme.Page]:
-    d = days_data.get(day)
+def day_page(day: int, goal: str = "cut") -> tuple[str, str, theme.Page]:
+    d = days_data.get(day, goal)
     page = d["page"]
     star = c.emo("⭐") if d["star"] else ""
 
@@ -88,7 +88,11 @@ def day_page(day: int) -> tuple[str, str, theme.Page]:
 .sheet.dark .tw .lead {{ color: {theme.D_TEXT_2}; }}
 """ + d["css"]
 
+    # Страницы под набор массы получают суффикс: комплект в out/ должен
+    # оставаться читаемым глазами, а не превращаться в набор одинаковых имён.
     slug = f"tripvaer-{day:02d}-{_slug(d['title'])}"
+    if goal == "gain":
+        slug += "-nabor"
     return render.document(css, body, f"День {day}. {d['title']}"), slug, page
 
 
@@ -226,14 +230,14 @@ def cover_page(variant: str = DEFAULT_COVER) -> tuple[str, str, theme.Page]:
     </div>
 
     <div class="eyebrow hot">Курс · 14 дней</div>
-    <h1>План<br>на первые<br>14 дней</h1>
-    <p class="sub">Один короткий урок в день и одно действие. Не теория —
-    то, что делаешь сегодня.</p>
+    <h1>Первые шаги<br>к форме</h1>
+    <p class="sub">14 дней — с чего начать и как не бросить. Один короткий
+    урок в день и одно действие, а не теория на потом.</p>
 
     <div class="levels-list">{rows}</div>
 
     <div class="bottom">
-      <div class="price"><b>690 ₽</b><span><s>1&thinsp;990 ₽</s> дальше будет столько</span><span>один раз, навсегда твоё</span></div>
+      <div class="price"><b>1&thinsp;890 ₽</b><span>один раз, навсегда твоё</span><span>без подписки и доплат</span></div>
       <div class="slogan">{SLOGAN}</div>
     </div>
   </div>
@@ -365,8 +369,10 @@ def main() -> None:
             html, slug, page = intro_page()
             print("  ", r.render(html, slug, page).name)
         for n in nums:
-            html, slug, page = day_page(n)
-            print("  ", r.render(html, slug, page).name)
+            # У трёх дней питание расходится по цели — печатаем обе версии.
+            for goal in (("cut", "gain") if n in days_data.GOAL_PAGES else ("cut",)):
+                html, slug, page = day_page(n, goal)
+                print("  ", r.render(html, slug, page).name)
         warnings = r.warnings
 
     if warnings:

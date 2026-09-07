@@ -8,25 +8,31 @@ const XPBar = ({ pct, compact = false }) => (
 const WarriorPortrait = ({ stage = 3 }) => {
   const s = Math.min(5, Math.max(0, stage));
 
+  // Шесть ступеней формы. Прежняя система вела их через металлы:
+  // серый → бронза → сталь → золото → огонь. У Crimson металлов нет,
+  // и вторая краска запрещена, поэтому прогресс читается насыщенностью
+  // одного алого: нейтральный силуэт → глубокий #9E1319 → акцент
+  // #D8232A → яркий #F4363D → белое каление. Ступень видно по тому,
+  // сколько в фигуре алого, а не по тому, каким металлом её покрыли.
   const P = [
-    // 0 — Новичок (серый силуэт)
-    { bg:"#111318", base:"#22252e", mid:"#2a2e3a", hi:"#3a3f50", trim:"#50566a",
-      blade:"#555", shine:"#888", eye:null, glow:0 },
-    // 1 — Ученик (бронза)
-    { bg:"#150e08", base:"#2c2010", mid:"#3a2a14", hi:"#50381c", trim:"#7a5828",
-      blade:"#9a8850", shine:"#c8b070", eye:null, glow:0 },
-    // 2 — Воин (сталь)
-    { bg:"#0e1018", base:"#202840", mid:"#2a3450", hi:"#384868", trim:"#607090",
-      blade:"#a0b8d0", shine:"#d8eaf8", eye:null, glow:0 },
-    // 3 — Рыцарь (золото)
-    { bg:"#120d04", base:"#3a2a10", mid:"#4e381a", hi:"#6a4e22", trim:"#c8920a",
-      blade:"#dcc870", shine:"#fff8c8", eye:"rgba(255,200,40,0.65)", glow:0.35 },
-    // 4 — Чемпион (огонь)
-    { bg:"#0e0702", base:"#3a1808", mid:"#582010", hi:"#7a2c12", trim:"#e8720a",
-      blade:"#fff0a0", shine:"#ffffff", eye:"rgba(255,140,20,0.9)", glow:0.65 },
-    // 5 — Легенда (пламя)
-    { bg:"#0a0404", base:"#280808", mid:"#440a0a", hi:"#6e0e0e", trim:"#ff3800",
-      blade:"#ffffff", shine:"#ffffa0", eye:"rgba(255,60,0,1)", glow:1.0 },
+    // 0 — Новичок (нейтральный силуэт, алого нет совсем)
+    { bg:"#0B0B0C", base:"#1B1B1E", mid:"#26262A", hi:"#303036", trim:"#4E4E56",
+      blade:"#5A5A62", shine:"#8A8A90", eye:null, glow:0 },
+    // 1 — Ученик (первый след алого в кромке)
+    { bg:"#0D0A0A", base:"#1F1618", mid:"#2A1B1D", hi:"#3A2124", trim:"#6E1015",
+      blade:"#7A5A5E", shine:"#A88A8E", eye:null, glow:0 },
+    // 2 — Воин (глубокий алый)
+    { bg:"#0E0809", base:"#2A1214", mid:"#3A171A", hi:"#4E1D21", trim:"#9E1319",
+      blade:"#B08A8E", shine:"#D8C0C2", eye:null, glow:0 },
+    // 3 — Рыцарь (полный акцент)
+    { bg:"#100708", base:"#3A1114", mid:"#50161A", hi:"#6E1D22", trim:"#D8232A",
+      blade:"#D8C8CA", shine:"#FFFFFF", eye:"rgba(216,35,42,0.65)", glow:0.35 },
+    // 4 — Чемпион (яркий алый)
+    { bg:"#110506", base:"#4A1013", mid:"#661419", hi:"#8E1A20", trim:"#F4363D",
+      blade:"#F0E4E5", shine:"#FFFFFF", eye:"rgba(244,54,61,0.9)", glow:0.65 },
+    // 5 — Легенда (белое каление на алом)
+    { bg:"#120405", base:"#5E0E12", mid:"#851318", hi:"#B01A20", trim:"#FFFFFF",
+      blade:"#FFFFFF", shine:"#FFE8E9", eye:"rgba(255,255,255,1)", glow:1.0 },
   ][s];
 
   const uid = `wp${s}`;
@@ -186,8 +192,8 @@ const Avatar = ({ size = 120, level = 12, pct = 0, stage = 3 }) => {
            style={{ position:"absolute", inset:0, transform:"rotate(-90deg)" }}>
         <defs>
           <linearGradient id={gradId} x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%"   stopColor="oklch(0.82 0.14 75)"/>
-            <stop offset="100%" stopColor="oklch(0.55 0.18 35)"/>
+            <stop offset="0%"   stopColor="var(--accent-hi)"/>
+            <stop offset="100%" stopColor="var(--accent-2)"/>
           </linearGradient>
         </defs>
         <circle cx={R} cy={R} r={inner}
@@ -195,8 +201,7 @@ const Avatar = ({ size = 120, level = 12, pct = 0, stage = 3 }) => {
         <circle cx={R} cy={R} r={inner}
           stroke={`url(#${gradId})`} strokeWidth={stroke} strokeLinecap="round"
           strokeDasharray={`${dash} ${circ}`} fill="none"
-          style={{ filter:"drop-shadow(0 0 6px rgba(217,162,84,0.5))",
-                   transition:"stroke-dasharray 0.8s var(--ease-out)" }}/>
+          style={{ transition:"stroke-dasharray 0.8s var(--ease-out)" }}/>
       </svg>
 
       {/* Portrait circle */}
@@ -215,10 +220,10 @@ const Avatar = ({ size = 120, level = 12, pct = 0, stage = 3 }) => {
         transform:"translateX(-50%)",
         padding:`${size*0.025}px ${size*0.08}px`,
         fontFamily:"var(--font-display)", fontSize:size*0.13, fontWeight:600,
-        color:"#0a0b0e",
-        background:"linear-gradient(180deg, oklch(0.85 0.14 75), oklch(0.68 0.16 55))",
+        color:"var(--text-1)",
+        background:"var(--accent)",
         borderRadius:999,
-        boxShadow:"0 3px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.3)",
+        boxShadow:"0 3px 10px rgba(0,0,0,0.5)",
         letterSpacing:"0.02em", whiteSpace:"nowrap", zIndex:1
       }}>
         Lv {level}

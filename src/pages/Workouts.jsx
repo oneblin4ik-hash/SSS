@@ -27,7 +27,7 @@ const WorkoutModal = ({ workout, onSave, onDelete, onClose }) => {
     <div className="ss-modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="ss-modal">
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-          <h2 style={{ fontFamily:"var(--font-display)", fontSize:22, margin:0 }}>
+          <h2 style={{ fontFamily:"var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", fontSize:22, margin:0 }}>
             {isNew ? "Добавить тренировку" : "Редактировать тренировку"}
           </h2>
           <button className="ss-ghost-btn" onClick={onClose} style={{ padding:"4px 8px" }}>✕</button>
@@ -265,7 +265,7 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
           <div>
             <div className="eyebrow">Мой вес</div>
             {latestWeight && (
-              <div style={{ fontFamily:"var(--font-display)", fontSize:28, color:"var(--teal)", marginTop:4 }}>
+              <div style={{ fontFamily:"var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", fontSize:28, color:"var(--teal)", marginTop:4 }}>
                 {latestWeight} кг
               </div>
             )}
@@ -306,7 +306,7 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
                   position:"relative"
                 }}>
                   <div className="num" style={{ fontSize:10, color:"var(--text-3)", marginBottom:2 }}>{fmtDate(e.date)}</div>
-                  <div style={{ fontFamily:"var(--font-display)", fontSize:20, color:"var(--text-1)" }}>{e.value}</div>
+                  <div style={{ fontFamily:"var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", fontSize:20, color:"var(--text-1)" }}>{e.value}</div>
                   <div style={{ fontSize:9, color:"var(--text-3)" }}>кг</div>
                   {delta !== null && (
                     <div style={{ fontSize:10, color, marginTop:2 }}>
@@ -331,7 +331,7 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
             <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px",
               background:"var(--bg-2)", borderRadius:8, border:"1px solid var(--line-1)" }}>
               <span style={{ flex:1, fontSize:13, color:"var(--text-2)" }}>{pr.lift}</span>
-              <span style={{ fontFamily:"var(--font-display)", fontSize:20, color:"var(--accent)" }}>{pr.value}</span>
+              <span style={{ fontFamily:"var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", fontSize:20, color:"var(--accent)" }}>{pr.value}</span>
               <span style={{ fontSize:11, color:"var(--text-3)" }}>{pr.unit}</span>
               <span className="num" style={{ fontSize:10, color:"var(--text-4)" }}>{fmtDate(pr.date)}</span>
             </div>
@@ -373,7 +373,7 @@ const WorkoutsPage = ({ workouts, setWorkouts, logEvent, setProfile }) => {
                   ? <input className="ss-input" type="number" step="0.1"
                       value={measForm[key] || ""} onChange={e => setMeasForm(f => ({ ...f, [key]: e.target.value }))}
                       style={{ textAlign:"center", marginBottom:8 }} />
-                  : <div style={{ fontFamily:"var(--font-display)", fontSize:24, color:"var(--text-1)", marginBottom:4 }}>{cur || "—"}</div>
+                  : <div style={{ fontFamily:"var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", fontSize:24, color:"var(--text-1)", marginBottom:4 }}>{cur || "—"}</div>
                 }
                 {isWaist
                   ? <div style={{ fontSize:10, color:"var(--text-4)", marginBottom:14 }}>нейтрально</div>

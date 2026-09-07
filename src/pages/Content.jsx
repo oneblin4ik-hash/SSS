@@ -237,8 +237,8 @@ const ContentPage = ({ content, setContent, logEvent }) => {
               <button key={f.id} onClick={() => setFormat(f.id)}
                 style={{
                   flex: 1, padding: "8px 12px", fontSize: 12,
-                  background: format === f.id ? "color-mix(in oklab, var(--accent) 15%, transparent)" : "transparent",
-                  color: format === f.id ? "var(--accent)" : "var(--text-3)",
+                  background: format === f.id ? "var(--bg-3)" : "transparent",
+                  color: format === f.id ? "var(--text-1)" : "var(--text-3)",
                   borderRight: f.id === "tg" ? "1px solid var(--line-2)" : "none",
                   transition: "all 0.15s"
                 }}>{f.label}</button>
@@ -250,7 +250,7 @@ const ContentPage = ({ content, setContent, logEvent }) => {
           <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
             {TONES.map(t => (
               <button key={t} className="ss-ghost-btn" onClick={() => setTone(t)}
-                style={tone === t ? { borderColor: "var(--accent)", color: "var(--accent)", background: "color-mix(in oklab, var(--accent) 10%, transparent)" } : {}}>
+                style={tone === t ? { borderColor: "var(--line-3)", color: "var(--text-1)", background: "var(--bg-3)" } : {}}>
                 {t}
               </button>
             ))}
@@ -290,13 +290,13 @@ const ContentPage = ({ content, setContent, logEvent }) => {
                 <span style={{ fontSize: 12, color: s.color, display: "flex", alignItems: "center", gap: 6 }}>
                   ● {s.label}
                 </span>
-                <span className="num" style={{ fontSize: 14, fontFamily: "var(--font-display)", color: s.color }}>{cnt}</span>
+                <span className="num" style={{ fontSize: 14, fontFamily: "var(--font-display)", fontWeight: 700, color: s.color }}>{cnt}</span>
               </div>
             );
           })}
           <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--line-1)" }}>
             <div className="eyebrow" style={{ marginBottom: 8 }}>Всего</div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: "var(--accent)" }}>{content.length}</div>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em", fontSize: 32, color: "var(--accent)" }}>{content.length}</div>
             <div style={{ fontSize: 11, color: "var(--text-3)" }}>единиц контента</div>
           </div>
         </div>

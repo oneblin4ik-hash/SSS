@@ -32,7 +32,7 @@ const App = () => {
             <div style={{ fontSize: 10, color: "var(--text-3)", fontFamily: "var(--font-mono)", marginBottom: 4 }}>
               ДОСТИЖЕНИЕ РАЗБЛОКИРОВАНО
             </div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--accent)" }}>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--accent)" }}>
               {achPopup.title}
             </div>
             <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 3 }}>{achPopup.desc}</div>

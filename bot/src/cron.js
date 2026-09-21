@@ -7,7 +7,7 @@
 import { sendMessage } from "./telegram.js";
 import { logEvent, getQuiz } from "./db.js";
 import { warmupText, warmupMarkup, SCHEDULE } from "./warmup.js";
-import { sendLesson, sendCheckin, sendUpsell } from "./course.js";
+import { sendLesson, sendCheckin, sendUpsell, askTimezone } from "./course.js";
 
 const now = () => new Date().toISOString();
 const BATCH = 50;   // за раз, чтобы уложиться в лимит бесплатного тарифа
@@ -20,7 +20,48 @@ export async function scheduleWarmup(db, userId, fromISO) {
       .bind(userId, s.kind, new Date(base + s.after).toISOString())));
 }
 
+/**
+ * Подбирает тех, у кого курс оплачен, а расписания нет.
+ *
+ * Такое уже случилось один раз: Эдуард нажал «Включить курс», когда
+ * выдачи ещё не существовало, — человек заплатил и не получил ничего.
+ * Одного этого хватило, чтобы сделать проверку постоянной: сообщение
+ * может не дойти, воркер может упасть между двумя строками, кнопку
+ * могут нажать во время выкладки.
+ *
+ * Спрашиваем часовой пояс заново. Повторно не спросим: метка в ленте
+ * событий держится вечно, а расписание появляется сразу после ответа.
+ */
+async function rescueUnstarted(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT o.user_id FROM orders o
+       JOIN users u ON u.user_id = o.user_id
+      WHERE o.status = 'paid' AND u.tz IS NULL
+        AND NOT EXISTS (SELECT 1 FROM jobs j
+                          WHERE j.user_id = o.user_id AND j.kind = 'lesson_1')
+        AND NOT EXISTS (SELECT 1 FROM events e
+                          WHERE e.user_id = o.user_id AND e.event = 'tz_rescued')
+      LIMIT 20`).all();
+
+  for (const r of results) {
+    try {
+      await askTimezone(env, r.user_id);
+      await logEvent(env.DB, r.user_id, "tz_rescued");
+      if (env.ADMIN_ID) {
+        await sendMessage(env.BOT_TOKEN, env.ADMIN_ID,
+          `Курс у ${r.user_id} был оплачен, но не запущен. ` +
+          `Спросил часовой пояс заново — как ответит, уроки пойдут.`);
+      }
+    } catch (e) {
+      console.error(`rescue ${r.user_id}:`, e?.message || e);
+    }
+  }
+  return results.length;
+}
+
 export async function runDue(env) {
+  await rescueUnstarted(env);
+
   const { results } = await env.DB.prepare(
     `SELECT * FROM jobs WHERE sent_at IS NULL AND due_at <= ?1
       ORDER BY due_at LIMIT ${BATCH}`).bind(now()).all();

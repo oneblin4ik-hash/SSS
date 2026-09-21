@@ -469,6 +469,26 @@ check(ups.some((t) => t.startsWith("Первый день без урока")), 
 check(ups.some((t) => t.startsWith("Жанна, разбор всё ещё за тобой")), "день 18, с именем");
 check(ups.some((t) => t.startsWith("Не буду напоминать больше")), "день 25 — последний");
 
+head("Оплатил, но курс не запустился:");
+// Ровно случай Жанны: кнопку «Включить курс» нажали, когда выдачи
+// ещё не было. Человек заплатил и не получил ничего.
+sqlite.prepare("INSERT INTO users (user_id, name, created_at) VALUES (333,'Жанна','x')").run();
+sqlite.prepare("INSERT INTO quiz (user_id, payload, quiz_at) VALUES (333, ?, 'x')")
+  .run(JSON.stringify({ ...payload, n: "Жанна", g: "f" }));
+sqlite.prepare("INSERT INTO orders (user_id, code, status, at) VALUES (333,'6A97','paid','x')").run();
+calls = [];
+await runDue(env);
+const rescue = sent().find((c) => c.body.chat_id === 333);
+check(!!rescue && rescue.body.text.includes("сколько сейчас на твоих часах"),
+      "подобрали и спросили время");
+check(sent().some((c) => c.body.chat_id === "1" && c.body.text.includes("был оплачен")),
+      "Эдуарду сказали, что так вышло");
+
+head("Второй раз не дёргаем:");
+calls = [];
+await runDue(env);
+check(!sent().some((c) => c.body.chat_id === 333), "человека повторно не беспокоим");
+
 /* ── 12. битый payload ────────────────────────────────────────────────── */
 head("Битый payload:");
 await send({ message: { from, chat, web_app_data: { data: "{не json" } } });

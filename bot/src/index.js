@@ -16,6 +16,7 @@ import * as day0 from "./day0.js";
 import * as sale from "./sale.js";
 import { runDue, scheduleWarmup } from "./cron.js";
 import { UNSUB_DONE } from "./warmup.js";
+import { onTimezone, onCheckin } from "./course.js";
 
 /* Клавиатура с кнопкой Mini App. Именно reply-keyboard, а не меню и не
    inline: только из неё работает sendData, и результат теста приходит
@@ -142,6 +143,12 @@ async function handleUpdate(env, update) {
     if (cq.data === "unsub") return onUnsub(env, cq);
     const admin = /^(grant|decline):(\d+)$/.exec(cq.data || "");
     if (admin) return sale.onAdminDecision(env, cq, admin[1], Number(admin[2]));
+
+    const tz = /^tz:(\d+)$/.exec(cq.data || "");
+    if (tz) return onTimezone(env, cq, Number(tz[1]));
+
+    const ci = /^ci:(\d+):(done|failed)$/.exec(cq.data || "");
+    if (ci) return onCheckin(env, cq, Number(ci[1]), ci[2]);
     return;
   }
 

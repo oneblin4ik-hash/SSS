@@ -15,6 +15,8 @@ import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import worker from "./src/index.js";
 import { runDue } from "./src/cron.js";
+import { lessonText, sendLesson } from "./src/course.js";
+import { daySlug, programSlug } from "./src/files.js";
 
 /* ── база: настоящий SQLite за фасадом D1 ─────────────────────────────── */
 const sqlite = new DatabaseSync(":memory:");
@@ -46,6 +48,9 @@ globalThis.fetch = async (url, init) => {
     return json(subscribed
       ? { ok: true, result: { status: "member" } }
       : { ok: false, description: "user not found" });
+  }
+  if (method === "sendDocument") {
+    return json({ ok: true, result: { document: { file_id: "FID_" + body.document } } });
   }
   return json({ ok: true, result: {} });
 };
@@ -194,6 +199,9 @@ const btn = offer.reply_markup.inline_keyboard[0][0];
 // не сообщает, и заявка потерялась бы вместе со всей ручной продажей.
 check(btn.callback_data === "contact", "кнопка даёт боту событие, а не уводит молча");
 check(!!row("SELECT 1 a FROM events WHERE event='offer_shown'"), "событие offer_shown");
+const offerPdf = calls.find((c) => c.method === "sendDocument");
+check(!!offerPdf && String(offerPdf.body.document).endsWith("/offer.pdf"),
+      "следом ушли три слайда файлом — его пересылают и показывают мужу");
 
 /* ── 7. здоровье: сердце и диабет ─────────────────────────────────────── */
 head("Человек с сердцем и диабетом:");
@@ -330,7 +338,138 @@ await send({ callback_query: { id: "13", from: { id: 999 },
 check(row("SELECT unsub FROM users WHERE user_id=999").unsub === 1, "флаг поставлен");
 check(lastText().startsWith("Понял, больше не пишу"), "ответ без обиды");
 
-/* ── 11. битый payload ────────────────────────────────────────────────── */
+/* ── 11. выдача курса ─────────────────────────────────────────────────── */
+head("Эдуард включил курс — что приходит человеку:");
+const from5 = { id: 444, username: "zhanna", first_name: "Жанна" };
+const chat5 = { id: 444 };
+// Женщина, похудение, дома — самый частый случай в воронке.
+const p5 = { ...payload, n: "Жанна", g: "f", gl: "loss", pl: "home", hl: ["none"] };
+await send({ message: { from: from5, chat: chat5, text: "/start" } });
+await send({ message: { from: from5, chat: chat5,
+  web_app_data: { data: JSON.stringify(p5) } } });
+for (const a of ["7:00 и 23:00", "утро и вечер", "вечером", "суп"]) {
+  await send({ message: { from: from5, chat: chat5, text: a } });
+}
+await send({ callback_query: { id: "20", from: from5, message: { chat: chat5 },
+                               data: "contact" } });
+calls = [];
+await send({ callback_query: { id: "21", from: adminFrom,
+  message: { chat: { id: 1 }, message_id: 7 }, data: "grant:444" } });
+const tzAsk = sent().find((c) => c.body.chat_id === 444);
+check(!!tzAsk && tzAsk.body.text.includes("сколько сейчас на твоих часах"),
+      "человека спросили про время, а не про часовой пояс");
+check(tzAsk.body.reply_markup.inline_keyboard.flat().length === 11,
+      "одиннадцать вариантов часов, от UTC+2 до +12");
+
+head("Человек выбрал своё время:");
+calls = [];
+await send({ callback_query: { id: "22", from: from5, message: { chat: chat5 },
+                               data: "tz:3" } });
+check(row("SELECT tz FROM users WHERE user_id=444")?.tz === "3", "пояс записан");
+const jobs5 = sqlite.prepare(
+  "SELECT kind FROM jobs WHERE user_id=444 AND sent_at IS NULL").all()
+  .map((r) => r.kind);
+check(jobs5.filter((k) => k.startsWith("lesson_")).length === 14, "14 уроков в очереди");
+check(jobs5.filter((k) => k.startsWith("checkin_")).length === 14, "14 чек-инов");
+check(jobs5.filter((k) => k.startsWith("upsell_")).length === 3, "три касания допродажи");
+const docs = calls.filter((c) => c.method === "sendDocument");
+check(docs.length === 3, `сразу пришли три файла (пришло ${docs.length})`);
+check(docs.some((d) => String(d.body.document).includes("kurs-00-pered-startom")),
+      "среди них «Перед стартом» — оплата не заканчивается обещанием подождать");
+
+head("Первый урок по расписанию:");
+sqlite.prepare("UPDATE jobs SET due_at='2000-01-01T00:00:00.000Z' " +
+               "WHERE user_id=444 AND kind='lesson_1'").run();
+calls = [];
+await runDue(env);
+const lesson = sent().find((c) => c.body.chat_id === 444);
+check(lesson.body.text.startsWith("*День 1. Аудит режима*"), "заголовок дня");
+check(lesson.body.text.includes("*Задание:*"), "задание на месте");
+check(lesson.body.reply_markup.inline_keyboard[0][0].url.includes("MoyaNormaBot"),
+      "кнопка калькулятора КБЖУ");
+const pdf1 = calls.find((c) => c.method === "sendDocument");
+check(String(pdf1.body.document) ===
+      "https://serbolin-kviz.pages.dev/kurs/kurs-01-audit-rezhima.pdf",
+      "страница дня ушла ссылкой");
+check(row("SELECT file_id FROM files WHERE slug='kurs-01-audit-rezhima'") !== null,
+      "file_id закэширован — второй раз файл по сети не пойдёт");
+
+head("Развилки в текстах:");
+// День 6 расходится по цели, день 4 — по полу и месту, день 7 — по полу.
+const six = lessonText(6, p5);
+check(six.includes("за день выходит дефицит"), "худеющей ушёл абзац про дефицит");
+check(!six.includes("за день выходит плюс"), "абзац про набор не ушёл");
+const sixGain = lessonText(6, { ...p5, gl: "mass" });
+check(sixGain.includes("за день выходит плюс"), "на наборе всё наоборот");
+check(!sixGain.includes("за день выходит дефицит"), "и дефицита нет");
+const four = lessonText(4, p5);
+check(four.includes("Дома, без оборудования"), "дома — домашний абзац");
+check(!four.includes("Если идёшь туда впервые"), "зала в нём нет");
+check(lessonText(7, p5).includes("Вес гуляет по циклу"), "женщине — абзац про цикл");
+check(!lessonText(7, { ...p5, g: "m" }).includes("Вес гуляет по циклу"),
+      "мужчине он не нужен");
+
+head("Варианты PDF:");
+check(daySlug(6, "kurs-06-golodat-ne-nuzhno", p5) === "kurs-06-golodat-ne-nuzhno",
+      "похудение — базовая страница");
+check(daySlug(6, "kurs-06-golodat-ne-nuzhno", { ...p5, gl: "mass" })
+      === "kurs-06-golodat-ne-nuzhno-nabor", "набор — своя");
+check(daySlug(4, "kurs-04-pervaya-trenirovka", p5)
+      === "kurs-04-pervaya-trenirovka-zh-dom", "женщина дома");
+check(daySlug(4, "kurs-04-pervaya-trenirovka", { ...p5, g: "m", pl: "gym" })
+      === "kurs-04-pervaya-trenirovka-m-zal", "мужчина в зале");
+check(programSlug(p5) === "kurs-15-programma-dom-pohudenie-zh", "программа под неё");
+check(programSlug({ ...p5, pl: "any" }) === "kurs-15-programma-dom-pohudenie-zh",
+      "«ещё не решил» уходит в домашнюю");
+
+head("Вечерний чек-ин:");
+sqlite.prepare("UPDATE jobs SET due_at='2000-01-01T00:00:00.000Z' " +
+               "WHERE user_id=444 AND kind='checkin_1'").run();
+calls = [];
+await runDue(env);
+const ask = sent().find((c) => c.body.text.startsWith("День 1. Задание сделано?"));
+check(!!ask, "вечером спросили");
+calls = [];
+await send({ callback_query: { id: "23", from: from5, message: { chat: chat5, message_id: 9 },
+                               data: "ci:1:done" } });
+check(row("SELECT checkin FROM progress WHERE user_id=444 AND day=1")?.checkin === "done",
+      "ответ записан");
+check(lastText() === "Отметил. 1 день подряд. Так и держим.", "стрик и склонение");
+
+head("«Не вышло» — тон без упрёка:");
+calls = [];
+await send({ callback_query: { id: "24", from: from5, message: { chat: chat5, message_id: 9 },
+                               data: "ci:2:failed" } });
+check(lastText().startsWith("Бывает."), "без морали");
+check(lastText().includes("Один пропущенный день ничего не решает"),
+      "совпадает с уроком двенадцатого дня");
+
+head("Четырнадцатый день закрывает курс:");
+sqlite.prepare("UPDATE progress SET sent_at='x' WHERE user_id=444").run();
+calls = [];
+await sendLesson(env, 444, 14);
+const texts14 = sent().map((c) => c.body.text);
+check(texts14.some((t) => t.includes("Курс пройден")), "экран «Курс пройден»");
+check(texts14.some((t) => t.includes("Жанна, 14 дней из 14")), "имя подставлено");
+const docs14 = calls.filter((c) => c.method === "sendDocument")
+  .map((c) => String(c.body.document));
+check(docs14.some((d) => d.includes("kurs-15-programma-dom-pohudenie-zh")),
+      "программа тренировок ушла");
+check(docs14.some((d) => d.includes("kurs-16-razbor")), "страница разбора ушла");
+check(!!row("SELECT 1 a FROM events WHERE event='course_finished'"), "событие записано");
+
+head("Допродажа ведения:");
+sqlite.prepare("UPDATE jobs SET due_at='2000-01-01T00:00:00.000Z' " +
+               "WHERE user_id=444 AND kind LIKE 'upsell_%'").run();
+calls = [];
+await runDue(env);
+const ups = sent().filter((c) => c.body.chat_id === 444).map((c) => c.body.text);
+check(ups.length === 3, "три касания");
+check(ups.some((t) => t.startsWith("Первый день без урока")), "день 15");
+check(ups.some((t) => t.startsWith("Жанна, разбор всё ещё за тобой")), "день 18, с именем");
+check(ups.some((t) => t.startsWith("Не буду напоминать больше")), "день 25 — последний");
+
+/* ── 12. битый payload ────────────────────────────────────────────────── */
 head("Битый payload:");
 await send({ message: { from, chat, web_app_data: { data: "{не json" } } });
 check(!!row("SELECT 1 a FROM events WHERE event='quiz_broken'"), "записан как quiz_broken");

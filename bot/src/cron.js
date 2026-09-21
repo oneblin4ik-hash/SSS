@@ -7,6 +7,7 @@
 import { sendMessage } from "./telegram.js";
 import { logEvent, getQuiz } from "./db.js";
 import { warmupText, warmupMarkup, SCHEDULE } from "./warmup.js";
+import { sendLesson, sendCheckin, sendUpsell } from "./course.js";
 
 const now = () => new Date().toISOString();
 const BATCH = 50;   // за раз, чтобы уложиться в лимит бесплатного тарифа
@@ -41,6 +42,13 @@ export async function runDue(env) {
 async function runOne(env, job) {
   if (job.kind === "admin_ping") return adminPing(env, job);
   if (job.kind.startsWith("warm_")) return warmup(env, job);
+
+  const m = /^(lesson|checkin|upsell)_(\d+)$/.exec(job.kind);
+  if (!m) return;
+  const day = Number(m[2]);
+  if (m[1] === "lesson") return sendLesson(env, job.user_id, day);
+  if (m[1] === "checkin") return sendCheckin(env, job.user_id, day);
+  return sendUpsell(env, job.user_id, day);
 }
 
 /* Напоминание Эдуарду о заявке, которая висит без ответа. */

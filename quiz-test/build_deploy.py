@@ -9,6 +9,13 @@
 адрес вписывается в бота один раз и потом не меняется, поэтому короткий
 лучше.
 
+Заодно копирует страницы курса в `dist/kurs/`. Они живут на том же
+хостинге не от лени: бот отправляет каждый PDF по ссылке ровно один раз,
+Telegram забирает файл себе и возвращает file_id — дальше в сообщение
+уходит строка, а не файл. Отдельный проект под сорок пять статических
+страниц означал бы лишнюю настройку руками и ещё одно место, которое
+однажды забудут обновить.
+
 Перед копированием проверяет три вещи, на которых Mini App ломается молча:
 
 1. `CFG.API` пуст. Результат уходит через `Telegram.WebApp.sendData`, и это
@@ -69,6 +76,29 @@ def main() -> int:
     dst = DIST / "index.html"
     shutil.copyfile(SRC, dst)
     print(f"Готово: {dst.relative_to(HERE.parent)} ({dst.stat().st_size // 1024} КБ)")
+
+    pdf_src = HERE.parent / "serbolin-pdf" / "out"
+    pdf_dst = DIST / "kurs"
+    pdf_dst.mkdir(exist_ok=True)
+    pages = sorted(pdf_src.glob("kurs-*.pdf"))
+    if not pages:
+        print("  Страниц курса не нашлось — собери их: python3 build_kurs.py")
+        return 1
+    size = 0
+    for f in pages:
+        shutil.copyfile(f, pdf_dst / f.name)
+        size += f.stat().st_size
+    print(f"Страницы курса: {len(pages)} файлов, {size // 1024 // 1024} МБ")
+
+    # Оффер тремя слайдами. Спека просит его рядом с Mini App, а не вместо:
+    # он остаётся в переписке, его пересылают и показывают мужу. Файл один
+    # на всех, персонализации в нём нет.
+    offer = HERE.parent / "offer-page" / "out" / "offer.pdf"
+    if offer.exists():
+        shutil.copyfile(offer, pdf_dst / "offer.pdf")
+        print(f"Оффер: offer.pdf ({offer.stat().st_size // 1024} КБ)")
+    else:
+        print("  Оффера нет — собери его: cd offer-page && python3 build_offer.py")
     print("Внешнего только шрифты Google и скрипт Telegram — так и задумано.")
     print()
     print("Дальше: залить папку dist на статический хостинг и вписать")

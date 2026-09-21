@@ -17,6 +17,7 @@
 import { sendMessage, answerCallback, call } from "./telegram.js";
 import { logEvent, getQuiz } from "./db.js";
 import { shortCode, contactUrl, BTN_CONTACT } from "./offer.js";
+import { askTimezone } from "./course.js";
 
 const now = () => new Date().toISOString();
 const TYPE_LABEL = { never: "🌱 Чистый лист", quit: "🔁 Второй заход", onoff: "⚡ Рывками" };
@@ -143,8 +144,13 @@ export async function onAdminDecision(env, cq, action, uid) {
   });
   await sendMessage(env.BOT_TOKEN, cq.message.chat.id,
     status === "paid"
-      ? "Отметил: курс включён. Выдача уроков подключается следующим заходом."
+      ? "Отметил: курс включён. Спросил у человека часовой пояс, " +
+        "дальше уроки пойдут сами."
       : "Отметил: отказался. Из списка ожидающих убрал.");
+
+  // Человеку — вопрос про время. Без него не с чем ставить расписание,
+  // и курс, за который заплатили, просто не начнётся.
+  if (status === "paid") await askTimezone(env, uid);
 }
 
 /** `/waiting` — кто нажал кнопку и ещё не получил ответа. */

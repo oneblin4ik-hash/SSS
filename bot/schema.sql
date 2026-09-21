@@ -88,3 +88,23 @@ CREATE INDEX IF NOT EXISTS jobs_due ON jobs (due_at) WHERE sent_at IS NULL;
 
 -- Отписка от догрева. Кнопка обязана работать с первого нажатия.
 ALTER TABLE users ADD COLUMN unsub INTEGER DEFAULT 0;
+
+-- Прогресс по курсу: какой день отправлен и что человек ответил вечером.
+CREATE TABLE IF NOT EXISTS progress (
+  user_id   INTEGER NOT NULL,
+  day       INTEGER NOT NULL,
+  sent_at   TEXT,
+  checkin   TEXT,             -- done | failed | NULL
+  at        TEXT,
+  PRIMARY KEY (user_id, day)
+);
+
+-- Кэш file_id. Telegram хранит файлы у себя: после первой отправки он
+-- отдаёт короткий идентификатор, и дальше бот шлёт не файл, а строку.
+-- Без кэша каждая отправка тянула бы PDF заново — трафик на пустом месте
+-- и лишняя точка отказа.
+CREATE TABLE IF NOT EXISTS files (
+  slug     TEXT PRIMARY KEY,
+  file_id  TEXT NOT NULL,
+  at       TEXT NOT NULL
+);

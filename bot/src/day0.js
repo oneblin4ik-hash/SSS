@@ -10,6 +10,7 @@ import { logEvent } from "./db.js";
 import { times, sleepHours, windows, hoursWord } from "./parse.js";
 import * as T from "./texts.js";
 import { offerText, OFFER_FOOTNOTE, BTN_CONTACT, shortCode } from "./offer.js";
+import { sendPdf } from "./files.js";
 
 const STEPS = 4;
 export const stateFor = (step) => `day0_${step}`;   // day0_1 … day0_4
@@ -118,6 +119,13 @@ export async function finish(env, chatId, uid, payload) {
         inline_keyboard: [[{ text: BTN_CONTACT, callback_data: "contact" }]],
       },
     });
+  // Следом те же три слайда файлом. Спека просит его рядом с Mini App,
+  // а не вместо: сообщение в чате пролистывают и забывают, а файл
+  // остаётся в переписке, его пересылают и показывают мужу. Заодно
+  // это единственное, что человек уносит с собой, если решит подумать.
+  await sendPdf(env, chatId, "offer",
+                "Тот же оффер тремя слайдами — чтобы было что перечитать " +
+                "и кому показать.");
   await logEvent(env.DB, uid, "offer_shown", { code });
 }
 

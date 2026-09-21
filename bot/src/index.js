@@ -17,6 +17,7 @@ import * as sale from "./sale.js";
 import { runDue, scheduleWarmup } from "./cron.js";
 import { UNSUB_DONE } from "./warmup.js";
 import { onTimezone, onCheckin } from "./course.js";
+import { ensureSchema } from "./migrate.js";
 
 /* Клавиатура с кнопкой Mini App. Именно reply-keyboard, а не меню и не
    inline: только из неё работает sendData, и результат теста приходит
@@ -127,6 +128,7 @@ async function onUnsub(env, cq) {
 }
 
 async function handleUpdate(env, update) {
+  await ensureSchema(env.DB);
   const msg = update.message;
   if (msg?.web_app_data) return onQuizDone(env, msg);
   if (msg?.text?.startsWith("/start")) return onStart(env, msg);
@@ -198,7 +200,9 @@ export default {
   // Крон раз в четверть часа: догрев и напоминания о висящих заявках.
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
-      runDue(env).catch((e) => console.error("cron failed:", e?.stack || e)),
+      ensureSchema(env.DB)
+        .then(() => runDue(env))
+        .catch((e) => console.error("cron failed:", e?.stack || e)),
     );
   },
 };

@@ -19,10 +19,10 @@ import { lessonText, sendLesson } from "./src/course.js";
 import { daySlug, programSlug } from "./src/files.js";
 
 /* ── база: настоящий SQLite за фасадом D1 ─────────────────────────────── */
+/* Пустая, как в проде сразу после создания. Таблицы поднимет сам бот
+   через ensureSchema — если миграция чего-то не умеет, прогон встанет
+   на первом же запросе, а не через неделю в бою. */
 const sqlite = new DatabaseSync(":memory:");
-for (const stmt of readFileSync("schema.sql", "utf8").split(";")) {
-  if (stmt.trim()) sqlite.exec(stmt);
-}
 
 const wrap = (sql) => ({
   args: [],
@@ -35,6 +35,18 @@ const DB = {
   prepare: wrap,
   async batch(list) { for (const s of list) await s.run(); },
 };
+
+/* Миграция в коде и schema.sql — две копии одной схемы, и разъехаться
+   они могут молча: добавил таблицу в файл, забыл в migrate.js, и в проде
+   её нет. Сверяем списки сразу, до всех сценариев. */
+function schemaDrift() {
+  const declared = [...readFileSync("schema.sql", "utf8")
+    .matchAll(/CREATE TABLE IF NOT EXISTS (\w+)/g)].map((m) => m[1]);
+  const live = sqlite.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+    .all().map((r) => r.name);
+  return declared.filter((t) => !live.includes(t));
+}
 
 /* ── Bot API: только запоминаем вызовы ────────────────────────────────── */
 let calls = [];
@@ -95,6 +107,17 @@ const check = (ok, what) => {
   if (!ok) failed++;
 };
 const head = (t) => console.log(`\n${t}`);
+
+/* ── 0. схема ─────────────────────────────────────────────────────────── */
+head("Миграция поднимает базу с нуля:");
+// Отдельным человеком, чтобы не занять источник у того, на ком дальше
+// проверяется запись диплинка.
+await send({ message: { from: { id: 1000, first_name: "Схема" },
+                        chat: { id: 1000 }, text: "/start" } });
+const drift = schemaDrift();
+check(drift.length === 0,
+      drift.length ? `в migrate.js нет таблиц: ${drift.join(", ")}`
+                   : "все таблицы из schema.sql на месте");
 
 /* ── 1. чужой запрос ──────────────────────────────────────────────────── */
 head("Чужой запрос без секрета:");

@@ -189,7 +189,7 @@ async function handleUpdate(env, update) {
  *
  * Теперь GET на адрес воркера отвечает этой строкой. Меняй её в том же
  * коммите, что и сами правки, — и проверка сводится к одному curl. */
-const VERSION = "2026-09-22 · предзапуск до 10 октября, чек-ин не встык";
+const VERSION = "2026-09-22 · след крона";
 
 export default {
   async fetch(request, env, ctx) {
@@ -220,11 +220,34 @@ export default {
   },
 
   // Крон раз в четверть часа: догрев и напоминания о висящих заявках.
+  //
+  // Каждое срабатывание оставляет след в ленте событий. Причина простая:
+  // крон — единственная часть бота, про которую снаружи ничего не видно.
+  // Уроки не уходили целый день, и понять по базе, крон не запускается
+  // или запускается и падает, было нечем. Теперь видно: нет записи —
+  // не запускался; есть «упал» — запускался и вот на чём.
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
       ensureSchema(env.DB)
         .then(() => runDue(env))
-        .catch((e) => console.error("cron failed:", e?.stack || e)),
+        .then((n) => note(env, `ушло ${n}`))
+        .catch(async (e) => {
+          console.error("cron failed:", e?.stack || e);
+          await note(env, `упал: ${e?.message || e}`);
+        }),
     );
   },
 };
+
+/* След крона. Пишем в обход logEvent: если упала схема, лента событий
+   может быть единственным, что уцелело, и ронять отчёт об ошибке
+   собственной ошибкой — худшее, что можно сделать. */
+async function note(env, text) {
+  try {
+    await env.DB.prepare(
+      `INSERT INTO events (user_id, event, meta, at) VALUES (0, 'cron', ?1, ?2)`)
+      .bind(text, new Date().toISOString()).run();
+  } catch (e) {
+    console.error("даже след крона не записался:", e?.message || e);
+  }
+}

@@ -666,6 +666,13 @@ calls = [];
 await sendMessage("TEST", 42, "*целая* разметка", { parse_mode: "Markdown" });
 check(sent()[0].body.parse_mode === "Markdown", "целую разметку не трогаем");
 
+/* ── 13bis. след крона ────────────────────────────────────────────────── */
+head("Крон оставляет след:");
+await worker.scheduled({}, env, ctx);
+await Promise.all(waited);
+check(!!row("SELECT 1 a FROM events WHERE user_id=0 AND event='cron'"),
+      "запись о срабатывании есть — видно, что крон живой");
+
 /* ── 13c. страница дня не ушла ────────────────────────────────────────── */
 head("Telegram не забрал файл страницы:");
 sqlite.prepare("INSERT INTO users (user_id, tz, created_at) VALUES (4242, 3, 'x')").run();

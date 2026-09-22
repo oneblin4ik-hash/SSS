@@ -153,13 +153,31 @@ export async function sendLesson(env, userId, day) {
     : {};
   await sendMessage(env.BOT_TOKEN, userId, lessonText(day, q),
                     { parse_mode: "Markdown", ...markup });
-  await sendPdf(env, userId, daySlug(day, l.slug, q));
 
+  // Прогресс пишем сразу за текстом, до файла. Раньше порядок был обратный,
+  // и одна осечка на странице дня стоила трёх вещей сразу: не уходил PDF,
+  // не писался прогресс, а вечером не приходил чек-ин — он смотрит именно
+  // в прогресс. Джоб при этом помечен отправленным, то есть день пропадал
+  // молча и целиком. Урок человек уже прочитал — значит день состоялся.
   await env.DB.prepare(
     `INSERT INTO progress (user_id, day, sent_at) VALUES (?1, ?2, ?3)
      ON CONFLICT(user_id, day) DO UPDATE SET sent_at = excluded.sent_at`)
     .bind(userId, day, now()).run();
   await logEvent(env.DB, userId, `day_${day}_read`);
+
+  try {
+    await sendPdf(env, userId, daySlug(day, l.slug, q));
+  } catch (e) {
+    // Страница не ушла. Сам человек об этом не напишет — он не знает,
+    // что она должна была прийти. Поэтому говорим Эдуарду: отправить
+    // файл руками он может за минуту.
+    await logEvent(env.DB, userId, `day_${day}_pdf_failed`, { e: String(e?.message || e) });
+    if (env.ADMIN_ID) {
+      await sendMessage(env.BOT_TOKEN, env.ADMIN_ID,
+        `Страница дня ${day} не ушла к ${userId}: ${e?.message || e}\n` +
+        `Урок пришёл, файла нет — отправь руками.`);
+    }
+  }
 
   if (day === 14) await finale(env, userId, q);
 }

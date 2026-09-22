@@ -653,6 +653,35 @@ calls = [];
 await sendMessage("TEST", 42, "*целая* разметка", { parse_mode: "Markdown" });
 check(sent()[0].body.parse_mode === "Markdown", "целую разметку не трогаем");
 
+/* ── 13c. страница дня не ушла ────────────────────────────────────────── */
+head("Telegram не забрал файл страницы:");
+sqlite.prepare("INSERT INTO users (user_id, tz, created_at) VALUES (4242, 3, 'x')").run();
+sqlite.prepare("INSERT INTO quiz (user_id, payload, quiz_at) VALUES (4242, ?, 'x')")
+  .run(JSON.stringify({ ...payload, n: "Пётр", g: "m" }));
+
+const realFetch = globalThis.fetch;
+globalThis.fetch = async (url, init) => {
+  const method = String(url).split("/").pop();
+  if (method === "sendDocument") {
+    calls.push({ method, body: JSON.parse(init.body) });
+    return { json: async () => ({ ok: false, description: "wrong file identifier" }),
+             status: 400 };
+  }
+  return realFetch(url, init);
+};
+calls = [];
+await sendLesson(env, 4242, 3);
+globalThis.fetch = realFetch;
+
+check(sent().some((c) => c.body.chat_id === 4242), "урок человеку всё равно ушёл");
+check(!!row("SELECT 1 a FROM progress WHERE user_id=4242 AND day=3"),
+      "прогресс записан — значит вечерний чек-ин придёт");
+check(!!row("SELECT 1 a FROM events WHERE user_id=4242 AND event='day_3_pdf_failed'"),
+      "осечка записана в ленту событий");
+check(sent().some((c) => String(c.body.chat_id) === "1" &&
+                         c.body.text.includes("не ушла")),
+      "Эдуарду сказано, что файл надо дослать руками");
+
 /* ── 13b. бюджет крона ────────────────────────────────────────────────── */
 head("Крон считает запросы, а не строки:");
 // Всё, что накопилось выше, закрываем — считаем с чистого листа.

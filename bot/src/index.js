@@ -189,7 +189,7 @@ async function handleUpdate(env, update) {
  *
  * Теперь GET на адрес воркера отвечает этой строкой. Меняй её в том же
  * коммите, что и сами правки, — и проверка сводится к одному curl. */
-const VERSION = "2026-09-22 · probeg, разметка, бюджет крона, страница дня";
+const VERSION = "2026-09-22 · предзапуск до 10 октября";
 
 export default {
   async fetch(request, env, ctx) {

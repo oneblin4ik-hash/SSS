@@ -453,6 +453,19 @@ check(programSlug({ ...p5, pl: "any" }) === "kurs-15-programma-dom-pohudenie-zh"
 head("Вечерний чек-ин:");
 sqlite.prepare("UPDATE jobs SET due_at='2000-01-01T00:00:00.000Z' " +
                "WHERE user_id=444 AND kind='checkin_1'").run();
+// Урок ушёл только что — спрашивать «сделал?» ещё не о чем.
+calls = [];
+await runDue(env);
+check(!sent().some((c) => c.body.text.startsWith("День 1. Задание сделано?")),
+      "через минуту после урока не спрашиваем");
+check(!!row("SELECT 1 a FROM jobs WHERE user_id=444 AND kind='checkin_1' " +
+            "AND sent_at IS NOT NULL"), "джоб при этом закрыт, второй раз не придёт");
+
+// А теперь по-настоящему: урок прочитан утром, чек-ин вечером.
+sqlite.prepare("UPDATE progress SET sent_at='2000-01-01T00:00:00.000Z' " +
+               "WHERE user_id=444 AND day=1").run();
+sqlite.prepare("UPDATE jobs SET sent_at=NULL, due_at='2000-01-01T00:00:00.000Z' " +
+               "WHERE user_id=444 AND kind='checkin_1'").run();
 calls = [];
 await runDue(env);
 const ask = sent().find((c) => c.body.text.startsWith("День 1. Задание сделано?"));

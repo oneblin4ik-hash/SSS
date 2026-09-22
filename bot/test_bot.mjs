@@ -52,6 +52,9 @@ function schemaDrift() {
 /* ── Bot API: только запоминаем вызовы ────────────────────────────────── */
 let calls = [];
 let subscribed = false;
+import { LESSONS, UPSELL } from "./src/lessons.js";
+import { RAZBOR_SLUG } from "./src/files.js";
+
 const json = (o) => ({ json: async () => o, status: 200 });
 globalThis.fetch = async (url, init) => {
   const method = String(url).split("/").pop();
@@ -598,6 +601,73 @@ check(preLaunch({ LAUNCH_AT: future.toISOString() }), "будущая — пре
 head("Битый payload:");
 await send({ message: { from, chat, web_app_data: { data: "{не json" } } });
 check(!!row("SELECT 1 a FROM events WHERE event='quiz_broken'"), "записан как quiz_broken");
+
+/* ── 14. прогон всего пути ────────────────────────────────────────────── */
+head("Прогон курса в личку владельцу:");
+const probegFrom = { id: 1, username: "serbolin", first_name: "Эдуард" };
+const probeg = (arg) =>
+  send({ message: { from: probegFrom, chat: { id: 1 },
+                    text: arg ? `/probeg ${arg}` : "/probeg" } });
+
+await send(text("/probeg"));
+check(sent().length === 0, "постороннему команда не отвечает ничем");
+
+await probeg("0");
+check(lastText().startsWith("Прогон сброшен"), "/probeg 0 обнуляет позицию");
+
+// Семь кусков плюс восьмое обращение — то, что приходит после конца.
+const runAll = [];
+let worst = 0;
+for (let n = 0; n < 8; n++) {
+  await probeg();
+  worst = Math.max(worst, calls.length);
+  runAll.push(...calls);
+}
+const runText = runAll.filter((c) => c.method === "sendMessage")
+                      .map((c) => c.body.text);
+const runDocs = runAll.filter((c) => c.method === "sendDocument")
+                      .map((c) => String(c.body.document));
+const anyHas = (list, s) => list.some((t) => t.includes(s));
+
+check(worst <= 45, `в одно обращение не больше 45 запросов (худший кусок: ${worst})`);
+
+head("Пришло всё, что приходит покупателю:");
+check(anyHas(runText, "ты в деле"), "минута оплаты");
+for (const slug of ["kurs-00-oblozhka", "kurs-00-oglavlenie", "kurs-00-pered-startom"]) {
+  check(anyHas(runDocs, slug), `файл ${slug}`);
+}
+let daysOk = 0, pagesOk = 0, checkinsOk = 0;
+for (let d = 1; d <= 14; d++) {
+  if (anyHas(runText, `День ${d} · 8:00`)) daysOk++;
+  if (anyHas(runDocs, LESSONS[d].slug)) pagesOk++;
+  if (anyHas(runText, `День ${d}. Задание сделано?`)) checkinsOk++;
+}
+check(daysOk === 14, "все четырнадцать уроков");
+check(pagesOk === 14, "все четырнадцать страниц дня");
+check(checkinsOk === 14, "все четырнадцать вечерних чек-инов");
+check(runText.filter((t) => t.includes("Курс пройден")).length === 1,
+      "финал приходит один раз, а не дважды — внутри урока и после него");
+check(!runText.some((t) => t.includes("###")), "решёток заголовков в тексте нет");
+check(anyHas(runDocs, "kurs-15-programma-dom-pohudenie-m"), "программа под ответы теста");
+check(anyHas(runDocs, RAZBOR_SLUG), "страница разбора");
+for (const d of [15, 18, 25]) {
+  check(anyHas(runText, UPSELL[d].slice(0, 30).replace("{{name}}, ", "")),
+        `допродажа дня ${d}`);
+}
+
+head("Развилки собрались под мужчину, похудение, дом:");
+check(anyHas(runDocs, "kurs-04-pervaya-trenirovka-m-dom"), "тренировка — мужская, домашняя");
+check(!anyHas(runDocs, "kurs-03-voda-nabor"), "питание — не набор массы");
+check(!runText.some((t) => t.includes("{{name}}")), "имя подставлено везде");
+check(!runText.some((t) => t.includes("**")), "звёздочек Markdown-2 нет");
+
+head("Конец прогона:");
+check(anyHas(runText, "Это был весь путь"), "восьмое обращение говорит, что всё");
+check(row("SELECT state FROM users WHERE user_id=1").state === null,
+      "позиция сброшена — следующий /probeg начнёт сначала");
+await probeg();
+check(sent()[0].body.text.includes("Включить курс"), "и правда начал сначала");
+await probeg("0");
 
 console.log(failed ? `\nПровалов: ${failed}` : "\nВсё чисто.");
 process.exit(failed ? 1 : 0);

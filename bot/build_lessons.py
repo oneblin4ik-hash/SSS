@@ -101,6 +101,13 @@ def parse():
         # идёт ниже: экран «Курс пройден» и три касания допродажи. Ловится
         # это только глазами, поэтому режем сразу.
         body = re.split(r"^#{1,3} ", body, flags=re.M)[0]
+        # И ещё раз, по-другому: экран «Курс пройден» набран блочной
+        # цитатой, его строка начинается с «> », а не с «#», — обрезка
+        # выше его не видит. Он затекал в урок четырнадцатого дня целиком
+        # и приходил человеку дважды: сначала внутри урока, сырым «###»
+        # и неподставленным {{name}}, а следом нормальным сообщением из
+        # finale(). Нашлось прогоном, глазами такое не ловится.
+        body = re.split(r"^> #{1,3} 🛡", body, flags=re.M)[0]
         days[n] = build(n, title, body)
     return days, finale(text), upsell(text)
 
@@ -181,6 +188,13 @@ def build(n, title, body):
                 cur_tag = TAGS[key]
             line = line[m.end():]
 
+        # Заголовок экрана уровня («### 🔍 Уровень 1 пройден»). В Telegram
+        # заголовков нет вообще, решётки пришли бы текстом, — делаем жирным.
+        h = re.match(r"#{1,6}\s*", line)
+        if h:
+            flush()
+            line = f"**{line[h.end():].strip()}**"
+
         cur.append(to_telegram(line))
 
     flush()
@@ -195,8 +209,14 @@ def split_body(body):
     for line in body.splitlines():
         if line.startswith(">"):
             lesson_lines.append(line[1:].strip())
-        elif line.startswith("**Задание:**"):
+            continue
+        if line.startswith("**Задание:**"):
             task = line[len("**Задание:**"):].strip()
+        # Строка не из цитаты в урок не идёт, но абзац рвёт. Без этого
+        # два блока цитаты, между которыми лежат «Задание», «PDF» и
+        # разделитель, слипаются в один: заголовок экрана уровня
+        # приклеивался к последнему абзацу дня и уезжал в бот как есть.
+        lesson_lines.append("")
     if task is None:
         sys.exit("У дня нет задания — проверь спеку.")
 
@@ -219,6 +239,15 @@ def main():
     missing = [n for n in range(1, 15) if n not in days]
     if missing:
         sys.exit(f"В спеке нет дней: {missing}")
+
+    # Имя подставляет только finale() и допродажа. Если {{name}} окажется
+    # в тексте урока, человек прочитает его буквально — так и было в дне 14.
+    for n, d in days.items():
+        for part in d["parts"]:
+            if "{{name}}" in part["text"]:
+                sys.exit(f"День {n}: в уроке осталось {{{{name}}}} — "
+                         f"урок именем не персонализируется, подставить "
+                         f"его там некому.")
 
     dump = lambda o: json.dumps(o, ensure_ascii=False, indent=2)
     OUT.write_text(

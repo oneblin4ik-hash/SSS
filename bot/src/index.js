@@ -20,6 +20,7 @@ import { UNSUB_DONE } from "./warmup.js";
 import { onTimezone, onCheckin } from "./course.js";
 import { ensureSchema } from "./migrate.js";
 import { preLaunch, scheduleLaunch } from "./launch.js";
+import { onProbeg } from "./probeg.js";
 
 /* Клавиатура с кнопкой Mini App. Именно reply-keyboard, а не меню и не
    inline: только из неё работает sendData, и результат теста приходит
@@ -140,6 +141,9 @@ async function handleUpdate(env, update) {
   if (msg?.web_app_data) return onQuizDone(env, msg);
   if (msg?.text?.startsWith("/start")) return onStart(env, msg);
   if (msg?.text?.startsWith("/waiting")) return sale.onWaiting(env, msg);
+  // Прогон всего пути в личку владельцу. Внутри проверка на ADMIN_ID:
+  // чужому эта команда не ответит ничем.
+  if (msg?.text?.startsWith("/probeg")) return onProbeg(env, msg);
   // Нужна ровно один раз, при настройке: свой id иначе негде взять.
   if (msg?.text?.startsWith("/id")) {
     return sendMessage(env.BOT_TOKEN, msg.chat.id, `Твой id: ${msg.from.id}`);

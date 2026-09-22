@@ -17,6 +17,7 @@ import worker from "./src/index.js";
 import { runDue } from "./src/cron.js";
 import { lessonText, sendLesson } from "./src/course.js";
 import { daySlug, programSlug } from "./src/files.js";
+import { preLaunch } from "./src/launch.js";
 
 /* ── база: настоящий SQLite за фасадом D1 ─────────────────────────────── */
 /* Пустая, как в проде сразу после создания. Таблицы поднимет сам бот
@@ -512,7 +513,88 @@ calls = [];
 await runDue(env);
 check(!sent().some((c) => c.body.chat_id === 333), "человека повторно не беспокоим");
 
-/* ── 12. битый payload ────────────────────────────────────────────────── */
+/* ── 12. предзапуск ───────────────────────────────────────────────────── */
+head("Продажа закрыта, идёт первый поток:");
+// Дата открытия в будущем — бот не продаёт.
+const future = new Date(Date.now() + 10 * 24 * 3600e3);
+const pre = { ...env, LAUNCH_AT: future.toISOString() };
+const from6 = { id: 222, first_name: "Ольга" };
+const chat6 = { id: 222 };
+const p6 = { ...payload, n: "Ольга", g: "f", hl: ["none"] };
+
+async function sendPre(update) {
+  calls = []; waited.length = 0;
+  const res = await worker.fetch(new Request("https://bot/", {
+    method: "POST",
+    headers: { "x-telegram-bot-api-secret-token": "s3cret" },
+    body: JSON.stringify(update),
+  }), pre, ctx);
+  await Promise.all(waited);
+  return res;
+}
+
+await sendPre({ message: { from: from6, chat: chat6, text: "/start" } });
+await sendPre({ message: { from: from6, chat: chat6,
+  web_app_data: { data: JSON.stringify(p6) } } });
+for (const a of ["7:00 и 23:00", "утро и вечер", "вечером", "суп"]) {
+  await sendPre({ message: { from: from6, chat: chat6, text: a } });
+}
+const pitch = sent().find((c) => c.body.text.includes("Первые шаги к форме"));
+check(!!pitch, "предложение пришло");
+check(!pitch.body.text.includes("1 890"), "цены в нём НЕТ");
+check(pitch.body.text.includes("Курс откроется"), "вместо цены — дата");
+check(pitch.body.text.includes("Ты уже в списке"), "человек знает, что его не забудут");
+check(pitch.body.text.includes("библиотека из 9 блюд"),
+      "ценность видна целиком — скрыта одна строка");
+check(pitch.body.reply_markup.inline_keyboard[0][0].callback_data === "contact",
+      "кнопка написать осталась: кто готов сейчас — напишет");
+check(!!row("SELECT 1 a FROM events WHERE event='prelaunch_shown'"), "событие записано");
+
+head("Догрев не ставится, ставится один джоб:");
+const j6 = sqlite.prepare(
+  "SELECT kind FROM jobs WHERE user_id=222 AND sent_at IS NULL").all()
+  .map((r) => r.kind);
+check(!j6.some((k) => k.startsWith("warm_")), "касаний догрева нет");
+check(j6.filter((k) => k === "launch").length === 1, "ровно один джоб на открытие");
+check(sqlite.prepare("SELECT due_at FROM jobs WHERE user_id=222 AND kind='launch'")
+  .get().due_at === future.toISOString(), "и он стоит на дату открытия");
+
+head("Наступил день открытия:");
+sqlite.prepare("UPDATE jobs SET due_at='2000-01-01T00:00:00.000Z' " +
+               "WHERE user_id=222 AND kind='launch'").run();
+calls = [];
+await runDue(env);
+const open = sent().find((c) => c.body.chat_id === 222);
+check(!!open && open.body.text.startsWith("Открыл."), "оффер пришёл");
+check(open.body.text.includes("1 890 ₽"), "теперь с ценой");
+check(calls.some((c) => c.method === "sendDocument"), "и файлом следом");
+check(!!row("SELECT 1 a FROM events WHERE event='launch_offer'"), "событие записано");
+const after = sqlite.prepare(
+  "SELECT kind FROM jobs WHERE user_id=222 AND sent_at IS NULL").all()
+  .map((r) => r.kind);
+check(after.filter((k) => k.startsWith("warm_")).length === 6,
+      "догрев начался от момента открытия, а не двумя неделями раньше");
+
+head("Кто уже написал — второй раз не трогаем:");
+sqlite.prepare("INSERT INTO orders (user_id, code, status, at) " +
+               "VALUES (111,'ZZZZ','awaiting','x')").run();
+sqlite.prepare("INSERT INTO users (user_id, created_at) VALUES (111,'x')").run();
+sqlite.prepare("INSERT INTO quiz (user_id, payload, quiz_at) VALUES (111, ?, 'x')")
+  .run(JSON.stringify(p6));
+sqlite.prepare("INSERT INTO jobs (user_id, kind, due_at) " +
+               "VALUES (111,'launch','2000-01-01T00:00:00.000Z')").run();
+calls = [];
+await runDue(env);
+check(!sent().some((c) => c.body.chat_id === 111),
+      "человеку с заявкой оффер не дублируется");
+
+head("Дата не заполнена — бот продаёт как обычно:");
+check(!preLaunch({ LAUNCH_AT: "" }), "пустое значение — продаём");
+check(!preLaunch({ LAUNCH_AT: "когда-нибудь" }), "кривое значение — продаём");
+check(!preLaunch({ LAUNCH_AT: "2020-01-01T00:00:00Z" }), "прошедшая дата — продаём");
+check(preLaunch({ LAUNCH_AT: future.toISOString() }), "будущая — предзапуск");
+
+/* ── 13. битый payload ────────────────────────────────────────────────── */
 head("Битый payload:");
 await send({ message: { from, chat, web_app_data: { data: "{не json" } } });
 check(!!row("SELECT 1 a FROM events WHERE event='quiz_broken'"), "записан как quiz_broken");

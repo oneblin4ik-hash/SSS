@@ -101,3 +101,16 @@ export const warmupMarkup = (kind, contactCode) => {
 };
 
 export const UNSUB_DONE = "Понял, больше не пишу. Если передумаешь — просто напиши сам.";
+
+/** Ставит всю цепочку касаний от указанного момента.
+ *
+ * Живёт здесь, а не в кроне, чтобы crоn и launch не импортировали друг
+ * друга по кругу: такие связи разваливаются не сразу, а в самый неудобный
+ * момент, и отлаживаются мучительно.
+ */
+export async function scheduleWarmup(db, userId, fromISO) {
+  const base = Date.parse(fromISO || new Date().toISOString());
+  await db.batch(SCHEDULE.map((s) =>
+    db.prepare(`INSERT INTO jobs (user_id, kind, due_at) VALUES (?1, ?2, ?3)`)
+      .bind(userId, s.kind, new Date(base + s.after).toISOString())));
+}

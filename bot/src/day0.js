@@ -11,6 +11,7 @@ import { times, sleepHours, windows, hoursWord } from "./parse.js";
 import * as T from "./texts.js";
 import { offerText, OFFER_FOOTNOTE, BTN_CONTACT, shortCode } from "./offer.js";
 import { sendPdf } from "./files.js";
+import { preLaunch, launchDate, preLaunchText, PRE_FOOTNOTE } from "./launch.js";
 
 const STEPS = 4;
 export const stateFor = (step) => `day0_${step}`;   // day0_1 … day0_4
@@ -110,10 +111,16 @@ export async function finish(env, chatId, uid, payload) {
                     { parse_mode: "Markdown" });
 
   const code = await shortCode(uid);
+  // До открытия продажи вместо цены стоит дата. Всё остальное человек
+  // получает целиком: ценность видно, скрыта ровно одна строка.
+  const pre = preLaunch(env);
+  const body = pre
+    ? `${preLaunchText(payload, launchDate(env))}\n\n_${PRE_FOOTNOTE}_`
+    : `${offerText(payload)}\n\n_${OFFER_FOOTNOTE}_`;
+
   // Кнопка с callback, а не ссылкой: по url-кнопке Telegram боту ничего
   // не сообщает, и заявка потерялась бы. Почему так — в sale.js.
-  await sendMessage(env.BOT_TOKEN, chatId,
-    `${offerText(payload)}\n\n_${OFFER_FOOTNOTE}_`, {
+  await sendMessage(env.BOT_TOKEN, chatId, body, {
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [[{ text: BTN_CONTACT, callback_data: "contact" }]],
@@ -126,7 +133,7 @@ export async function finish(env, chatId, uid, payload) {
   await sendPdf(env, chatId, "offer",
                 "Тот же оффер тремя слайдами — чтобы было что перечитать " +
                 "и кому показать.");
-  await logEvent(env.DB, uid, "offer_shown", { code });
+  await logEvent(env.DB, uid, pre ? "prelaunch_shown" : "offer_shown", { code });
 }
 
 /* Разобралось время — показываем вывод про сон. Не разобралось — ставим

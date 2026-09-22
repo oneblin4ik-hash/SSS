@@ -30,7 +30,10 @@ export async function shortCode(userId) {
     .toUpperCase();
 }
 
-export function offerText(payload) {
+/* Тело оффера без цены. Нужно отдельно, потому что до открытия продажи
+   человек получает то же самое, но вместо цены — дату. Ценность видно
+   целиком, скрыта ровно одна строка. */
+export function offerBody(payload) {
   const name = payload.n || "";
   const type = TYPE[payload.t] || TYPE.never;
   const health = payload.hl || [];
@@ -69,10 +72,12 @@ export function offerText(payload) {
     ``,
     `Через две недели курс закончится, а библиотека блюд, правило возврата ` +
     `и твои цифры останутся. Пользоваться ими можно годами.`,
-    ``,
-    `*${PRICE}* — один раз, навсегда твоё. Без подписки и доплат.`,
   ].join("\n");
 }
+
+export const offerText = (payload) =>
+  `${offerBody(payload)}\n\n*${PRICE}* — один раз, навсегда твоё. ` +
+  `Без подписки и доплат.`;
 
 export const OFFER_FOOTNOTE =
   "Пишешь мне в личку — отвечаю сам, не бот и не менеджер. " +

@@ -14,10 +14,12 @@ import { sendMessage, answerCallback, isSubscribed } from "./telegram.js";
 import { upsertUser, logEvent, saveQuiz, getUser, getQuiz } from "./db.js";
 import * as day0 from "./day0.js";
 import * as sale from "./sale.js";
-import { runDue, scheduleWarmup } from "./cron.js";
+import { runDue } from "./cron.js";
+import { scheduleWarmup } from "./warmup.js";
 import { UNSUB_DONE } from "./warmup.js";
 import { onTimezone, onCheckin } from "./course.js";
 import { ensureSchema } from "./migrate.js";
+import { preLaunch, scheduleLaunch } from "./launch.js";
 
 /* Клавиатура с кнопкой Mini App. Именно reply-keyboard, а не меню и не
    inline: только из неё работает sendData, и результат теста приходит
@@ -108,10 +110,15 @@ async function onQuizDone(env, msg) {
   await saveQuiz(env.DB, uid, payload);
   await logEvent(env.DB, uid, "quiz_done", { t: payload.t ?? null, ex: payload.ex ?? null });
 
-  // Догрев вешается прямо здесь, от момента окончания теста, а не после
-  // «Дня 0». Человек может бросить диалог на первом же вопросе — и тогда
-  // он тем более тот, кому надо написать через четыре часа.
-  await scheduleWarmup(env.DB, uid);
+  // Пока продажа закрыта, догрев не ставим: толкать к покупке того, кому
+  // нечего покупать, — верный способ сжечь человека до запуска. Вместо
+  // шести касаний одно, в день открытия.
+  //
+  // Вешаем прямо здесь, от момента окончания теста, а не после «Дня 0»:
+  // человек может бросить диалог на первом же вопросе — и тогда он тем
+  // более тот, кому надо написать.
+  if (preLaunch(env)) await scheduleLaunch(env.DB, uid, env.LAUNCH_AT);
+  else await scheduleWarmup(env.DB, uid);
 
   // Дальше сразу «День 0»: пауза между тестом и первым заданием — это
   // место, где человек закрывает чат и не возвращается.

@@ -6,19 +6,12 @@
  * догрева не про минуты), а чаще — лишние запуски на ровном месте. */
 import { sendMessage } from "./telegram.js";
 import { logEvent, getQuiz } from "./db.js";
-import { warmupText, warmupMarkup, SCHEDULE } from "./warmup.js";
+import { warmupText, warmupMarkup } from "./warmup.js";
 import { sendLesson, sendCheckin, sendUpsell, askTimezone } from "./course.js";
+import { sendLaunchOffer } from "./launch.js";
 
 const now = () => new Date().toISOString();
 const BATCH = 50;   // за раз, чтобы уложиться в лимит бесплатного тарифа
-
-/** Ставит всю цепочку догрева от момента окончания теста. */
-export async function scheduleWarmup(db, userId, fromISO) {
-  const base = Date.parse(fromISO || now());
-  await db.batch(SCHEDULE.map((s) =>
-    db.prepare(`INSERT INTO jobs (user_id, kind, due_at) VALUES (?1, ?2, ?3)`)
-      .bind(userId, s.kind, new Date(base + s.after).toISOString())));
-}
 
 /**
  * Подбирает тех, у кого курс оплачен, а расписания нет.
@@ -82,6 +75,7 @@ export async function runDue(env) {
 
 async function runOne(env, job) {
   if (job.kind === "admin_ping") return adminPing(env, job);
+  if (job.kind === "launch") return sendLaunchOffer(env, job.user_id);
   if (job.kind.startsWith("warm_")) return warmup(env, job);
 
   const m = /^(lesson|checkin|upsell)_(\d+)$/.exec(job.kind);

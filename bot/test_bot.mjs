@@ -28,7 +28,11 @@ const sqlite = new DatabaseSync(":memory:");
 const wrap = (sql) => ({
   args: [],
   bind(...a) { this.args = a.map((v) => (v === undefined ? null : v)); return this; },
-  async run() { return sqlite.prepare(sql).run(...this.args); },
+  // Форма ответа как у настоящего D1: код смотрит в meta.changes.
+  async run() {
+    const r = sqlite.prepare(sql).run(...this.args);
+    return { success: true, meta: { changes: Number(r.changes) } };
+  },
   async first() { return sqlite.prepare(sql).get(...this.args) ?? null; },
   async all() { return { results: sqlite.prepare(sql).all(...this.args) }; },
 });
@@ -665,6 +669,37 @@ check(!sent()[0].body.parse_mode, "parse_mode снят, текст ушёл ка
 calls = [];
 await sendMessage("TEST", 42, "*целая* разметка", { parse_mode: "Markdown" });
 check(sent()[0].body.parse_mode === "Markdown", "целую разметку не трогаем");
+
+/* ── 13ter. очередь без крона ─────────────────────────────────────────── */
+head("Очередь двигается и без крона:");
+sqlite.prepare("UPDATE jobs SET sent_at='x' WHERE sent_at IS NULL").run();
+sqlite.prepare("INSERT INTO jobs (user_id, kind, due_at) " +
+               "VALUES (777,'upsell_15','2000-01-01T00:00:00.000Z')").run();
+// Обычное сообщение боту от постороннего — очередь всё равно шевельнулась.
+await send(text("привет"));
+check(!row("SELECT 1 a FROM jobs WHERE kind='upsell_15' AND sent_at IS NULL"),
+      "джоб ушёл на попутном обращении к боту");
+
+head("/tick — протолкнуть руками:");
+sqlite.prepare("INSERT INTO jobs (user_id, kind, due_at) " +
+               "VALUES (777,'upsell_18','2000-01-01T00:00:00.000Z')").run();
+calls = [];
+await send({ message: { from: adminFrom, chat: { id: 1 }, text: "/tick" } });
+check(lastText().startsWith("Отправлено: 1"), "отчитался, сколько ушло");
+await send({ message: { from: adminFrom, chat: { id: 1 }, text: "/tick" } });
+check(lastText() === "Отправлять нечего.", "второй раз отправлять нечего");
+calls = [];
+await send({ message: { from, chat, text: "/tick" } });
+check(!sent().some((c) => String(c.body.text).startsWith("Отправ")),
+      "постороннему команда не отвечает");
+
+head("Два прохода разом не шлют одно и то же дважды:");
+sqlite.prepare("INSERT INTO jobs (user_id, kind, due_at) " +
+               "VALUES (777,'upsell_25','2000-01-01T00:00:00.000Z')").run();
+calls = [];
+await Promise.all([runDue(env), runDue(env)]);
+check(sent().filter((c) => String(c.body.text).includes("Не буду напоминать")).length === 1,
+      "касание ушло ровно один раз");
 
 /* ── 13bis. след крона ────────────────────────────────────────────────── */
 head("Крон оставляет след:");

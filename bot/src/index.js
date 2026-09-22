@@ -137,6 +137,21 @@ async function onUnsub(env, cq) {
 
 async function handleUpdate(env, update) {
   await ensureSchema(env.DB);
+  await route(env, update);
+
+  // Любое обращение к боту заодно подталкивает очередь. Крон — отдельная
+  // настройка, и сегодня выяснилось, что её может не быть: уроки пролежали
+  // весь день, потому что будить их было некому. Бюджет маленький, чтобы
+  // не съесть лимит запросов у того, кто сейчас разговаривает с ботом;
+  // отправка идёт после ответа человеку, а не вместо него.
+  try {
+    await runDue(env, 8);
+  } catch (e) {
+    console.error("подталкивание очереди упало:", e?.message || e);
+  }
+}
+
+async function route(env, update) {
   const msg = update.message;
   if (msg?.web_app_data) return onQuizDone(env, msg);
   if (msg?.text?.startsWith("/start")) return onStart(env, msg);
@@ -144,6 +159,16 @@ async function handleUpdate(env, update) {
   // Прогон всего пути в личку владельцу. Внутри проверка на ADMIN_ID:
   // чужому эта команда не ответит ничем.
   if (msg?.text?.startsWith("/probeg")) return onProbeg(env, msg);
+  // Протолкнуть очередь руками. Нужна, пока крон не подключён: без него
+  // уроки, чек-ины и догрев просто лежат в базе и ждут.
+  if (msg?.text?.startsWith("/tick") &&
+      String(msg.from.id) === String(env.ADMIN_ID)) {
+    // Бюджет с запасом: следом отработает ещё и подталкивание очереди,
+    // а лимит на всё обращение — пятьдесят запросов.
+    const n = await runDue(env, 30);
+    return sendMessage(env.BOT_TOKEN, msg.chat.id,
+      n ? `Отправлено: ${n}. Если осталось — жми ещё.` : "Отправлять нечего.");
+  }
   // Нужна ровно один раз, при настройке: свой id иначе негде взять.
   if (msg?.text?.startsWith("/id")) {
     return sendMessage(env.BOT_TOKEN, msg.chat.id, `Твой id: ${msg.from.id}`);
@@ -189,7 +214,7 @@ async function handleUpdate(env, update) {
  *
  * Теперь GET на адрес воркера отвечает этой строкой. Меняй её в том же
  * коммите, что и сами правки, — и проверка сводится к одному curl. */
-const VERSION = "2026-09-22 · след крона";
+const VERSION = "2026-09-22 · /tick и подталкивание очереди";
 
 export default {
   async fetch(request, env, ctx) {

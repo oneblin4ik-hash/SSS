@@ -72,7 +72,7 @@ async function rescueUnstarted(env) {
   return results.length;
 }
 
-export async function runDue(env) {
+export async function runDue(env, budget = BUDGET) {
   await rescueUnstarted(env);
 
   const { results } = await env.DB.prepare(
@@ -84,18 +84,28 @@ export async function runDue(env) {
     // Не влезает в бюджет — останавливаемся. Джоб остаётся неотправленным
     // и достанется следующему крону: он ждал четырнадцать дней, подождёт
     // ещё четверть часа.
-    if (spent + price(job.kind) > BUDGET) break;
+    if (spent + price(job.kind) > budget) break;
     spent += price(job.kind);
+
+    // Джоб забираем ДО отправки, одним условным апдейтом. Два прохода
+    // могут идти одновременно — крон и подталкивание из вебхука, — и если
+    // помечать после, оба увидят джоб неотправленным и человек получит
+    // урок дважды. Проиграл гонку — значит его уже взял другой.
+    //
+    // Заодно решается старая беда: при отправке помечали в любом случае,
+    // но если воркера убивали посреди работы, пометка не доезжала и урок
+    // приходил повторно. Теперь потерянная отправка остаётся потерянной,
+    // а повторной не бывает — это осознанный обмен, дубль хуже.
+    const claim = await env.DB.prepare(
+      `UPDATE jobs SET sent_at = ?2 WHERE id = ?1 AND sent_at IS NULL`)
+      .bind(job.id, now()).run();
+    if (!claim?.meta?.changes) continue;
 
     try {
       await runOne(env, job);
     } catch (e) {
       console.error(`job ${job.id} (${job.kind}) упал:`, e?.message || e);
     }
-    // Помечаем в любом случае. Повторять неудачную отправку опаснее, чем
-    // потерять её: человек получит одно и то же сообщение пачкой.
-    await env.DB.prepare(`UPDATE jobs SET sent_at = ?2 WHERE id = ?1`)
-      .bind(job.id, now()).run();
     sentCount++;
   }
   return sentCount;

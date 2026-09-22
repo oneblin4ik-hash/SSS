@@ -653,6 +653,25 @@ calls = [];
 await sendMessage("TEST", 42, "*целая* разметка", { parse_mode: "Markdown" });
 check(sent()[0].body.parse_mode === "Markdown", "целую разметку не трогаем");
 
+/* ── 13b. бюджет крона ────────────────────────────────────────────────── */
+head("Крон считает запросы, а не строки:");
+// Всё, что накопилось выше, закрываем — считаем с чистого листа.
+sqlite.prepare("UPDATE jobs SET sent_at='x' WHERE sent_at IS NULL").run();
+for (let i = 0; i < 25; i++) {
+  sqlite.prepare("INSERT INTO jobs (user_id, kind, due_at) " +
+                 "VALUES (?, 'lesson_2', '2000-01-01T00:00:00.000Z')").run(20000 + i);
+}
+const waiting = () => sqlite.prepare(
+  "SELECT COUNT(*) c FROM jobs WHERE sent_at IS NULL AND kind='lesson_2'").get().c;
+
+calls = [];
+const first = await runDue(env);
+check(first === 20,
+      `за раз ушло 20 уроков — это 40 запросов из 40, а не 25 строк (ушло ${first})`);
+check(waiting() === 5, "остальные ждут следующего крона, а не помечены отправленными");
+await runDue(env);
+check(waiting() === 0, "следующий крон их забрал");
+
 /* ── 14. прогон всего пути ────────────────────────────────────────────── */
 head("Прогон курса в личку владельцу:");
 const probegFrom = { id: 1, username: "serbolin", first_name: "Эдуард" };

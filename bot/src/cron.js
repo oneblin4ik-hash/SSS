@@ -11,7 +11,27 @@ import { sendLesson, sendCheckin, sendUpsell, askTimezone } from "./course.js";
 import { sendLaunchOffer } from "./launch.js";
 
 const now = () => new Date().toISOString();
-const BATCH = 50;   // за раз, чтобы уложиться в лимит бесплатного тарифа
+const BATCH = 50;          // сколько строк вообще достаём из базы за раз
+
+/* Бюджет на одно срабатывание крона.
+ *
+ * Лимит бесплатного тарифа — пятьдесят исходящих запросов на одно обращение
+ * к воркеру. Считать в джобах, как было, — ошибка: «отправить урок» это два
+ * запроса (сообщение и файл), а четырнадцатый день — пять, потому что следом
+ * идут программа и разбор. На полусотне уроков воркер упирался бы в лимит
+ * где-то на середине, а джоб к этому моменту уже помечен отправленным —
+ * и человек молча остался бы без дня. Тихая потеря хуже задержки.
+ *
+ * Поэтому считаем запросы, а не строки. Что не влезло — лежит дальше и
+ * уедет со следующим кроном, через четверть часа. */
+const BUDGET = 40;         // десяток оставлен на подбор незапустившихся
+
+const price = (kind) => {
+  if (kind === "lesson_14") return 5;        // урок, страница, финал, программа, разбор
+  if (kind.startsWith("lesson_")) return 2;  // урок и страница дня
+  if (kind === "launch") return 2;           // оффер и файл следом
+  return 1;
+};
 
 /**
  * Подбирает тех, у кого курс оплачен, а расписания нет.
@@ -59,7 +79,14 @@ export async function runDue(env) {
     `SELECT * FROM jobs WHERE sent_at IS NULL AND due_at <= ?1
       ORDER BY due_at LIMIT ${BATCH}`).bind(now()).all();
 
+  let spent = 0, sentCount = 0;
   for (const job of results) {
+    // Не влезает в бюджет — останавливаемся. Джоб остаётся неотправленным
+    // и достанется следующему крону: он ждал четырнадцать дней, подождёт
+    // ещё четверть часа.
+    if (spent + price(job.kind) > BUDGET) break;
+    spent += price(job.kind);
+
     try {
       await runOne(env, job);
     } catch (e) {
@@ -69,8 +96,9 @@ export async function runDue(env) {
     // потерять её: человек получит одно и то же сообщение пачкой.
     await env.DB.prepare(`UPDATE jobs SET sent_at = ?2 WHERE id = ?1`)
       .bind(job.id, now()).run();
+    sentCount++;
   }
-  return results.length;
+  return sentCount;
 }
 
 async function runOne(env, job) {

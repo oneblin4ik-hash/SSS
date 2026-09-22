@@ -76,7 +76,7 @@ async function notifyAdmin(env, uid, code, from) {
     ? `${d.window1} и ${d.window2}` : d?.windows_raw || "не ответил";
 
   const lines = [
-    `🔔 Заявка · код *${code}*`,
+    `🔔 Заявка · код ${code}`,
     ``,
     `${q?.n || from.first_name || "—"}, ${who}${q?.a ? `, ${q.a} лет` : ""}`,
     `Тип: ${TYPE_LABEL[q?.t] || "—"}`,
@@ -91,8 +91,11 @@ async function notifyAdmin(env, uid, code, from) {
   }
   lines.push(`Тест ${when(at?.quiz_at)}`);
 
+  // Без разметки намеренно. В карточке стоит юзернейм, а подчёркивание
+  // в нём — обычное дело: @ivan_petrov сломал бы разбор, и заявка не
+  // пришла бы вовсе. Жирный код того не стоит, а @ Telegram подсветит
+  // и в простом тексте.
   await sendMessage(env.BOT_TOKEN, env.ADMIN_ID, lines.join("\n"), {
-    parse_mode: "Markdown",
     reply_markup: {
       inline_keyboard: [[
         { text: "Включить курс", callback_data: `grant:${uid}` },

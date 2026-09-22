@@ -1,4 +1,5 @@
 /* Доступ к D1. Ничего умного: три функции, которые нужны первому заходу. */
+import { plain } from "./telegram.js";
 
 const now = () => new Date().toISOString();
 
@@ -32,6 +33,11 @@ export async function logEvent(db, userId, event, meta = null) {
 /** Результат теста. Перепрохождение затирает прошлый — человеку показываем
  *  то, что он ответил в последний раз, а не первый. */
 export async function saveQuiz(db, userId, payload) {
+  // Имя человек пишет сам, а дальше оно встаёт внутрь наших звёздочек:
+  // «*{имя}, твоя стартовая точка*». Одна звёздочка или подчёркивание
+  // в имени — и карточка не отправится вообще. Чистим на входе, один раз.
+  if (payload.n) payload = { ...payload, n: plain(payload.n) };
+
   await db.batch([
     db
       .prepare(

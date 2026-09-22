@@ -18,8 +18,39 @@ export async function call(token, method, payload = {}) {
   return data.result;
 }
 
-export const sendMessage = (token, chat_id, text, extra = {}) =>
-  call(token, "sendMessage", { chat_id, text, ...extra });
+/* Разметка Telegram — минное поле, и мина всегда чужая.
+ *
+ * Одиночная звёздочка, подчёркивание или квадратная скобка ломают разбор,
+ * и Bot API не отправляет сообщение ВООБЩЕ: отвечает ошибкой. А чужой текст
+ * попадает внутрь наших сообщений постоянно — имя из теста, юзернейм в
+ * карточке заявки, ответ своими словами в «Дне 0». Юзернеймы с
+ * подчёркиванием встречаются через один: @ivan_petrov — это уже нечётное
+ * подчёркивание и карточка, которая не придёт.
+ *
+ * Поэтому перед отправкой считаем маркеры. Не сходятся — отправляем то же
+ * самое без разметки: человек увидит звёздочки вместо жирного, но увидит.
+ * Потерять сообщение целиком хуже, чем потерять его оформление. */
+const balanced = (text) => {
+  for (const ch of ["*", "_", "`"]) {
+    if ((text.split(ch).length - 1) % 2) return false;
+  }
+  // Ссылка в разметке — это «[подпись](адрес)». Скобка без пары значит,
+  // что Telegram будет искать конец ссылки до конца сообщения и не найдёт.
+  return text.split("[").length === text.split("](").length;
+};
+
+export const sendMessage = (token, chat_id, text, extra = {}) => {
+  const safe = extra.parse_mode && !balanced(text)
+    ? { ...extra, parse_mode: undefined }
+    : extra;
+  return call(token, "sendMessage", { chat_id, text, ...safe });
+};
+
+/** Чужой текст, который встанет внутрь наших звёздочек. Маркеры из него
+ *  убираем: в имени и в ответе своими словами им делать нечего, а без
+ *  них оформление вокруг не разъедется. */
+export const plain = (s) =>
+  String(s ?? "").replace(/[*_`\[\]]/g, "").trim();
 
 export const answerCallback = (token, id, text, alert = false) =>
   call(token, "answerCallbackQuery", {

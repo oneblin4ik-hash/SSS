@@ -5,7 +5,7 @@
  * в users: заводить ради четырёх шагов отдельную машину состояний дороже,
  * чем она стоит.
  */
-import { sendMessage } from "./telegram.js";
+import { sendMessage, plain } from "./telegram.js";
 import { logEvent } from "./db.js";
 import { times, sleepHours, windows, hoursWord } from "./parse.js";
 import * as T from "./texts.js";
@@ -33,7 +33,10 @@ export async function answer(env, msg, state, payload) {
   if (!step) return false;
 
   const uid = msg.from.id;
-  const text = (msg.text || "").trim();
+  // Ответ своими словами попадёт в карточку рядом с жирными подписями.
+  // Маркеры разметки из него убираем сразу: человек их не имел в виду,
+  // а карточку они ломают целиком.
+  const text = plain(msg.text);
   if (!text) return true;                    // стикер вместо ответа — ждём дальше
 
   await store(env.DB, uid, step, text);

@@ -54,6 +54,7 @@ let calls = [];
 let subscribed = false;
 import { LESSONS, UPSELL } from "./src/lessons.js";
 import { RAZBOR_SLUG } from "./src/files.js";
+import { sendMessage } from "./src/telegram.js";
 
 const json = (o) => ({ json: async () => o, status: 200 });
 globalThis.fetch = async (url, init) => {
@@ -601,6 +602,56 @@ check(preLaunch({ LAUNCH_AT: future.toISOString() }), "будущая — пре
 head("Битый payload:");
 await send({ message: { from, chat, web_app_data: { data: "{не json" } } });
 check(!!row("SELECT 1 a FROM events WHERE event='quiz_broken'"), "записан как quiz_broken");
+
+/* ── 13a. чужой текст с разметкой ─────────────────────────────────────── */
+head("Имя и юзернейм со звёздочками и подчёркиванием:");
+// @ivan_petrov — обычный юзернейм, и в нём нечётное подчёркивание.
+// Раньше такая карточка заявки не приходила вообще: Telegram отвечал
+// ошибкой разбора и НЕ отправлял сообщение.
+const from7 = { id: 1234, username: "ivan_petrov", first_name: "Ва_ся" };
+const chat7 = { id: 1234 };
+const p7 = { ...payload, n: "Ан*на_", g: "f" };
+
+const marks = (t, ch) => (t.split(ch).length - 1) % 2 === 0;
+const wellFormed = (c) =>
+  !c.body.parse_mode ||
+  (marks(c.body.text, "*") && marks(c.body.text, "_") && marks(c.body.text, "`"));
+
+let markup = [];
+const sendMark = async (u) => { await send(u); markup.push(...sent()); };
+
+await sendMark({ message: { from: from7, chat: chat7, text: "/start" } });
+await sendMark({ message: { from: from7, chat: chat7,
+                            web_app_data: { data: JSON.stringify(p7) } } });
+for (const a of ["7:00 и 23_00", "утро и *вечер*", "вечером_", "суп [овощной]"]) {
+  await sendMark({ message: { from: from7, chat: chat7, text: a } });
+}
+await sendMark({ callback_query: { id: "77", from: from7,
+                                   message: { chat: chat7, message_id: 9 },
+                                   data: "contact" } });
+
+check(JSON.parse(row("SELECT payload FROM quiz WHERE user_id=1234").payload).n === "Анна",
+      "маркеры из имени убраны на входе");
+check(row("SELECT hunger_time FROM day0 WHERE user_id=1234").hunger_time === "вечером",
+      "и из ответа своими словами тоже");
+check(markup.every(wellFormed),
+      "ни одного сообщения с разметкой вразнос");
+
+const startCard = markup.find((c) => c.body.text.startsWith("*Анна,"));
+check(!!startCard, "карточка стартовой точки собралась с жирным именем");
+
+const orderCard = markup.find((c) => c.body.text.startsWith("🔔 Заявка"));
+check(!!orderCard, "карточка заявки ушла Эдуарду");
+check(orderCard.body.text.includes("@ivan_petrov"), "юзернейм в ней целый");
+check(!orderCard.body.parse_mode, "и отправлена без разметки — ломаться нечему");
+
+head("Если разметка всё же разъехалась — сообщение не теряем:");
+calls = [];
+await sendMessage("TEST", 42, "сломан*ная разметка", { parse_mode: "Markdown" });
+check(!sent()[0].body.parse_mode, "parse_mode снят, текст ушёл как есть");
+calls = [];
+await sendMessage("TEST", 42, "*целая* разметка", { parse_mode: "Markdown" });
+check(sent()[0].body.parse_mode === "Markdown", "целую разметку не трогаем");
 
 /* ── 14. прогон всего пути ────────────────────────────────────────────── */
 head("Прогон курса в личку владельцу:");

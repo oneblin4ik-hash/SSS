@@ -11,6 +11,7 @@
  * за всё время, сколько бы человек ни купило.
  */
 import { call } from "./telegram.js";
+import { PDF_VER } from "./pdfver.js";
 
 export const BASE = "https://serbolin-kviz.pages.dev/kurs";
 
@@ -45,12 +46,21 @@ export const RAZBOR_SLUG = "kurs-16-razbor";
  * человек не должен остаться без страницы дня молча.
  */
 export async function sendPdf(env, chatId, slug, caption) {
-  const cached = await env.DB.prepare(`SELECT file_id FROM files WHERE slug = ?1`)
-    .bind(slug).first();
+  // Ключ кэша — имя файла плюс отпечаток содержимого. Без отпечатка
+  // пересобранный PDF до людей не доезжает: Telegram хранит первую копию,
+  // и бот слал бы её вечно. Отпечаток пишет quiz-test/build_deploy.py.
+  const ver = PDF_VER[slug];
+  const key = ver ? `${slug}@${ver}` : slug;
 
+  const cached = await env.DB.prepare(`SELECT file_id FROM files WHERE slug = ?1`)
+    .bind(key).first();
+
+  // ?v= — на случай, если Telegram помнит и сам адрес: с новым отпечатком
+  // адрес тоже новый. Pages строку запроса игнорирует и отдаёт тот же файл.
+  const url = `${BASE}/${slug}.pdf${ver ? `?v=${ver}` : ""}`;
   const msg = await call(env.BOT_TOKEN, "sendDocument", {
     chat_id: chatId,
-    document: cached ? cached.file_id : `${BASE}/${slug}.pdf`,
+    document: cached ? cached.file_id : url,
     ...(caption ? { caption } : {}),
   });
 
@@ -60,7 +70,7 @@ export async function sendPdf(env, chatId, slug, caption) {
       await env.DB.prepare(
         `INSERT INTO files (slug, file_id, at) VALUES (?1, ?2, ?3)
          ON CONFLICT(slug) DO UPDATE SET file_id = excluded.file_id`)
-        .bind(slug, id, new Date().toISOString()).run();
+        .bind(key, id, new Date().toISOString()).run();
     }
   }
   return msg;

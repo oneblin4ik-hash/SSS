@@ -79,6 +79,7 @@ Chromium разрешает делать разного размера в одн
            out/offer.pdf
 """
 import base64
+import sys
 import os
 import pathlib
 import re
@@ -327,14 +328,31 @@ def photo_b64(stem: str) -> str:
 
 
 def results_html() -> str:
-    cells = "".join(
-        f'<figure class="rz{" rz-wide" if wide else ""}">'
-        f'<img src="{photo_b64(stem)}" alt="" loading="lazy">'
-        f'<figcaption><b>{name}</b> {line}</figcaption></figure>'
-        for stem, name, line, wide in RESULTS)
+    """Ученики с кадрами: у каждого своя карточка — фото и история под ним.
+
+    Раньше фото стояли мелкой сеткой, а отзывы отдельно, ниже, одним текстом.
+    Владелец ждал другого: отзыв и рядом фото, отзыв и фото. Так и сделано —
+    фото во всю ширину, потому что оно и есть доказательство, а в плитке
+    на полэкрана телефона его не разглядеть. Если у человека есть и карточка
+    в «Кого я веду», её слова и ссылка встают сюда же, под его кадр.
+    """
+    review = {stem: (text, url) for letter, name, role, text, url in STUDENTS
+              for n, stem in PHOTO_OF.items() if n == name}
+    cards = []
+    for stem, name, line, _wide in RESULTS:
+        extra = ""
+        if stem in review:
+            text, url = review[stem]
+            extra = (f'<p class="st-quote">{text}</p>'
+                     f'<a class="rv-link" href="{url}" target="_blank" '
+                     f'rel="noopener">Отзыв целиком — в инстаграме</a>')
+        cards.append(
+            f'<li class="st"><img src="{photo_b64(stem)}" alt="{name}: до и после" '
+            f'loading="lazy"><div class="st-body"><b>{name}</b>'
+            f'<p>{line}</p>{extra}</div></li>')
     return f"""
       <p class="eyebrow">Результаты учеников</p>
-      <div class="rz-grid">{cells}</div>
+      <ul class="st-list">{"".join(cards)}</ul>
       <p class="rz-note">От трёх месяцев до девяти. За две недели курса такого
       не будет, и курс говорит об этом прямым текстом. Он даёт старт, остальное
       делает время.</p>
@@ -387,6 +405,19 @@ STUDENTS = [
 ]
 
 
+# Кто из «Кого я веду» есть и на кадре «до/после». Связываем явно, а не
+# совпадением имён: Виктории две, и это разные люди — Вика с первого кадра
+# и Виктория с третьего (istorii-uchenikov.md, со слов владельца). Карточка
+# в «Кого я веду» — это Виктория с третьего кадра, 70 → 62.
+#
+# Остальным карточкам фото не подбираем. Поставить рядом с отзывом чужое
+# тело — это уже не оформление, а ложь о живом человеке.
+PHOTO_OF = {
+    "Виктория": "do-posle-70-62",
+    "Герман": "do-posle-german",
+}
+
+
 def asset_b64(name: str) -> str:
     raw = (HERE / "assets" / name).read_bytes()
     return "data:image/webp;base64," + base64.b64encode(raw).decode("ascii")
@@ -431,7 +462,8 @@ def students_html() -> str:
         f"<p>{text}</p>"
         f'<a class="rv-link" href="{url}" target="_blank" rel="noopener">'
         f"Отзыв целиком — в инстаграме</a></li>"
-        for letter, name, role, text, url in STUDENTS)
+        for letter, name, role, text, url in STUDENTS
+        if name not in PHOTO_OF)       # у кого есть кадр — те уже выше, с фото
     return (
         '<p class="rv-note">Это мои слова о них. Сам отзыв каждый говорит '
         'на видео — по ссылке под карточкой.</p>'
@@ -565,7 +597,7 @@ def slide_decide(interactive: bool) -> str:
 
       {sheets_html()}
 
-      <p class="eyebrow" style="margin-top:26px">Кого я веду</p>
+      <p class="eyebrow" style="margin-top:26px">Ещё ученики</p>
       <div class="reviews">{students_html()}</div>
 
       <div class="honest">
@@ -734,6 +766,14 @@ h1,h2,h3{font-weight:800;letter-spacing:-.04em;line-height:1.06;text-wrap:balanc
   border-bottom:1px solid rgba(244,54,61,.35);padding-bottom:1px}
 .rv-link:hover{border-bottom-color:var(--accent-hi)}
 
+.st-list{list-style:none;display:grid;grid-template-columns:1fr;gap:18px;margin-top:12px}
+.st{background:var(--plate);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.st img{display:block;width:100%;height:auto}
+.st-body{padding:15px 20px 18px}
+.st-body b{display:block;font:700 16px/1.3 'Manrope',sans-serif;color:var(--text)}
+.st-body p{margin-top:6px;font-size:14.5px;line-height:1.55;color:var(--text-3)}
+.st-body .st-quote{margin-top:12px;padding-left:12px;border-left:2px solid var(--accent);
+  color:var(--text-2)}
 .rz-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .rz{position:relative;margin:0;border-radius:14px;overflow:hidden;
   background:var(--plate);border:1px solid var(--line)}
@@ -937,8 +977,57 @@ def document(inner: str) -> str:
 
 
 def print_page(heights: list[float] | None = None) -> str:
-    return document(inline_avatar(page(interactive=False, print_mode=True,
-                                       heights=heights)))
+    return jpeg_for_print(document(inline_avatar(
+        page(interactive=False, print_mode=True, heights=heights))))
+
+
+def jpeg_for_print(html: str) -> str:
+    """WebP → JPEG, только для печати.
+
+    PDF не знает WebP. Chromium, встретив его, раскодирует картинку и кладёт
+    в файл почти сырой: девять кадров учеников превращали оффер в 11 МБ
+    против 600 КБ без них. JPEG же PDF умеет сам, и Chromium вставляет его
+    как есть, без перекодирования. Для Mini App картинки остаются WebP —
+    там браузер понимает его и он легче.
+    """
+    import io
+    from PIL import Image
+
+    def repl(m: re.Match) -> str:
+        im = Image.open(io.BytesIO(base64.b64decode(m.group(1))))
+        if im.mode in ("RGBA", "LA", "P"):
+            # Прозрачность у нас только на тёмном фоне — туда и сводим,
+            # иначе JPEG зальёт её чёрным поверх чёрного, что то же самое,
+            # но честнее сделать это явно.
+            bg = Image.new("RGB", im.size, (19, 19, 21))
+            bg.paste(im.convert("RGBA"), mask=im.convert("RGBA").split()[-1])
+            im = bg
+        buf = io.BytesIO()
+        im.convert("RGB").save(buf, "JPEG", quality=86, optimize=True,
+                               progressive=False)
+        return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+
+    return re.sub(r"data:image/webp;base64,([A-Za-z0-9+/=]+)", repl, html)
+
+
+# Картинки на странице помечены loading="lazy" — для Mini App это правильно,
+# там их листают пальцем. Но при печати Chromium ленивые картинки ниже
+# первого экрана не грузит ВООБЩЕ: в PDF на их месте пустота нулевой высоты.
+#
+# Так и было с самого начала. Все девять кадров «до/после» и листы курса
+# стояли в вёрстке, а в offer.pdf, который бот рассылал каждому, их не было
+# ни одного — только аватар на обложке. Сборка при этом рапортовала, что всё
+# в порядке. Владелец нашёл это сам: «я думал, там отзыв и фото, а там просто
+# отзывы».
+#
+# Поэтому перед каждым замером и перед печатью все картинки переводятся
+# в обычную загрузку, и мы ждём, пока каждая реально раскодируется.
+LOAD_ALL_IMAGES = """async () => {
+  const imgs = [...document.images];
+  for (const i of imgs) i.loading = 'eager';
+  await Promise.all(imgs.map(i => i.decode().catch(() => null)));
+  return imgs.filter(i => !i.naturalWidth).length;
+}"""
 
 
 def render_pdf(name: str = "offer.pdf") -> tuple[pathlib.Path, list[str]]:
@@ -968,6 +1057,11 @@ def render_pdf(name: str = "offer.pdf") -> tuple[pathlib.Path, list[str]]:
         src.write_text(print_page(), encoding="utf-8")
         pg.goto(src.as_uri(), wait_until="load")
         pg.evaluate("document.fonts.ready")
+        # Высота слайда зависит от картинок: без них карточки схлопываются,
+        # и замер врёт — страница выходит короче, чем нужно.
+        broken = pg.evaluate(LOAD_ALL_IMAGES)
+        if broken:
+            sys.exit(f"{broken} картинок не загрузились — PDF был бы без них.")
         natural = pg.evaluate(
             "(mm) => [].slice.call(document.querySelectorAll('.slide'))"
             ".map(s => s.getBoundingClientRect().height / mm)", MM)
@@ -977,6 +1071,7 @@ def render_pdf(name: str = "offer.pdf") -> tuple[pathlib.Path, list[str]]:
         src.write_text(print_page(heights), encoding="utf-8")
         pg.goto(src.as_uri(), wait_until="load")
         pg.evaluate("document.fonts.ready")
+        pg.evaluate(LOAD_ALL_IMAGES)
         pg.pdf(path=str(dst), print_background=True, prefer_css_page_size=True,
                margin={"top": "0", "bottom": "0", "left": "0", "right": "0"})
         br.close()
@@ -997,6 +1092,7 @@ def check_pdf(path: pathlib.Path) -> None:
     except ImportError:
         print("pypdfium2 не установлен, число страниц не проверено")
         return
+    import pypdfium2.raw as pdfium_raw
     doc = pdfium.PdfDocument(str(path))
     sizes = [tuple(round(v / 72 * 25.4) for v in pg.get_size()) for pg in doc]
     if len(sizes) == 3:
@@ -1004,6 +1100,16 @@ def check_pdf(path: pathlib.Path) -> None:
               + ", ".join(f"{w}×{h} мм" for w, h in sizes))
     else:
         print(f"ВНИМАНИЕ: страниц {len(sizes)}, а слайда три — {sizes}")
+
+    # Число страниц сходилось и раньше — а фото в файле не было ни одного.
+    # Поэтому считаем сами картинки: на третьем слайде их не меньше, чем
+    # кадров учеников. Меньше — сборка падает, а не рапортует «готово».
+    imgs = [sum(1 for o in pg.get_objects()
+                if o.type == pdfium_raw.FPDF_PAGEOBJ_IMAGE) for pg in doc]
+    print(f"Картинок по слайдам: {imgs}")
+    if len(imgs) < 3 or imgs[2] < len(RESULTS):
+        sys.exit(f"На третьем слайде {imgs[2] if len(imgs) > 2 else 0} картинок, "
+                 f"а кадров учеников {len(RESULTS)}. Фото не доехали до PDF.")
 
 
 def main() -> None:

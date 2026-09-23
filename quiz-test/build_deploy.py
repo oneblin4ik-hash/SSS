@@ -43,6 +43,34 @@ ALLOWED = (
 )
 
 
+def write_pdf_versions(pdf_dir: pathlib.Path) -> None:
+    """Отпечаток каждого PDF — боту, в bot/src/pdfver.js.
+
+    Бот отправляет файл по ссылке один раз, а дальше шлёт копию, которую
+    Telegram запомнил, — по file_id. Это экономит трафик, но значит и другое:
+    пересобранный файл до людей не доезжает. Сервер отдаёт новый, а бот
+    всё равно шлёт старый из памяти Telegram. Так оффер без фото продолжал
+    бы уходить и после того, как фото в нём появились.
+
+    Поэтому к имени файла в кэше бота приклеивается отпечаток содержимого.
+    Файл изменился — отпечаток другой, кэш промахивается, бот отправляет
+    по ссылке заново. Руками ничего сбрасывать не надо.
+    """
+    import hashlib, json
+    ver = {f.stem: hashlib.sha256(f.read_bytes()).hexdigest()[:10]
+           for f in sorted(pdf_dir.glob("*.pdf"))}
+    dst = HERE.parent / "bot" / "src" / "pdfver.js"
+    dst.write_text(
+        "/* СГЕНЕРИРОВАНО quiz-test/build_deploy.py. Руками не править.\n"
+        " *\n"
+        " * Отпечаток содержимого каждого PDF. Бот клеит его к ключу кэша\n"
+        " * file_id: пересобрал файл — отпечаток сменился — бот отправит\n"
+        " * новый, а не старую копию из памяти Telegram. */\n"
+        f"export const PDF_VER = {json.dumps(ver, indent=2, ensure_ascii=False)};\n",
+        encoding="utf-8")
+    print(f"Отпечатки PDF для бота: {len(ver)} файлов → bot/src/pdfver.js")
+
+
 def main() -> int:
     html = SRC.read_text(encoding="utf-8")
     bad = []
@@ -103,6 +131,8 @@ def main() -> int:
         print(f"Оффер: {name} ({offer.stat().st_size // 1024} КБ)")
     if not offer.exists():
         print("  Оффера нет — собери его: cd offer-page && python3 build_offer.py")
+
+    write_pdf_versions(pdf_dst)
     print("Внешнего только шрифты Google и скрипт Telegram — так и задумано.")
     print()
     print("Дальше: залить папку dist на статический хостинг и вписать")

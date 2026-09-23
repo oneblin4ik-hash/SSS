@@ -57,7 +57,8 @@ function schemaDrift() {
 let calls = [];
 let subscribed = false;
 import { LESSONS, UPSELL } from "./src/lessons.js";
-import { RAZBOR_SLUG } from "./src/files.js";
+import { RAZBOR_SLUG, sendPdf } from "./src/files.js";
+import { PDF_VER } from "./src/pdfver.js";
 import { sendMessage } from "./src/telegram.js";
 
 const json = (o) => ({ json: async () => o, status: 200 });
@@ -232,7 +233,7 @@ const btn = offer.reply_markup.inline_keyboard[0][0];
 check(btn.callback_data === "contact", "кнопка даёт боту событие, а не уводит молча");
 check(!!row("SELECT 1 a FROM events WHERE event='offer_shown'"), "событие offer_shown");
 const offerPdf = calls.find((c) => c.method === "sendDocument");
-check(!!offerPdf && String(offerPdf.body.document).endsWith("/offer.pdf"),
+check(!!offerPdf && /\/offer\.pdf(\?v=|$)/.test(String(offerPdf.body.document)),
       "следом ушли три слайда файлом — его пересылают и показывают мужу");
 
 /* ── 7. здоровье: сердце и диабет ─────────────────────────────────────── */
@@ -421,8 +422,9 @@ check(lesson.body.reply_markup.inline_keyboard[0][0].url.includes("MoyaNormaBot"
       "кнопка калькулятора КБЖУ");
 const pdf1 = calls.find((c) => c.method === "sendDocument");
 check(String(pdf1.body.document) ===
-      "https://serbolin-kviz.pages.dev/kurs/kurs-01-audit-rezhima.pdf",
-      "страница дня ушла ссылкой");
+      "https://serbolin-kviz.pages.dev/kurs/kurs-01-audit-rezhima.pdf" +
+      `?v=${PDF_VER["kurs-01-audit-rezhima"]}`,
+      "страница дня ушла ссылкой, с отпечатком версии");
 check(row("SELECT file_id FROM files WHERE slug='kurs-01-audit-rezhima'") !== null,
       "file_id закэширован — второй раз файл по сети не пойдёт");
 
@@ -713,6 +715,25 @@ await worker.scheduled({}, env, ctx);
 await Promise.all(waited);
 check(!!row("SELECT 1 a FROM events WHERE user_id=0 AND event='cron'"),
       "запись о срабатывании есть — видно, что крон живой");
+
+/* ── 13d. пересобранный PDF доезжает до людей ───────────────────────── */
+head("Пересобранный файл уходит заново, а не из памяти Telegram:");
+sqlite.prepare("DELETE FROM files WHERE slug LIKE 'offer@%'").run();   // холодный кэш
+calls = [];
+await sendPdf(env, 42, "offer");
+check(calls.at(-1).body.document.startsWith("https://"), "первый раз — по ссылке");
+calls = [];
+await sendPdf(env, 42, "offer");
+check(calls.at(-1).body.document.startsWith("FID_"), "второй — из кэша, по file_id");
+
+// Файл пересобрали: отпечаток другой.
+const oldVer = PDF_VER.offer;
+PDF_VER.offer = "0000000000";
+calls = [];
+await sendPdf(env, 42, "offer");
+check(calls.at(-1).body.document.includes("?v=0000000000"),
+      "после пересборки — снова по ссылке, с новым отпечатком");
+PDF_VER.offer = oldVer;
 
 /* ── 13c. страница дня не ушла ────────────────────────────────────────── */
 head("Telegram не забрал файл страницы:");

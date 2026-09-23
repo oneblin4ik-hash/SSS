@@ -564,6 +564,12 @@ const pitch = sent().find((c) => c.body.text.includes("Первые шаги к 
 check(!!pitch, "предложение пришло");
 check(!pitch.body.text.includes("1 890"), "цены в нём НЕТ");
 check(pitch.body.text.includes("Курс откроется"), "вместо цены — дата");
+check(calls.some((c) => c.method === "sendDocument" &&
+                        String(c.body.document).includes("offer-pre")),
+      "и файл следом тоже без цены, предзапускный");
+check(!calls.some((c) => c.method === "sendDocument" &&
+                         /\/offer\.pdf/.test(String(c.body.document))),
+      "обычный оффер с ценой в это время не уходит");
 check(pitch.body.text.includes("Ты уже в списке"), "человек знает, что его не забудут");
 check(pitch.body.text.includes("библиотека из 9 блюд"),
       "ценность видна целиком — скрыта одна строка");

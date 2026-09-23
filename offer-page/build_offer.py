@@ -98,6 +98,22 @@ MM = 96 / 25.4      # CSS-пикселей в миллиметре
 
 PRICE = "1 890 ₽"
 
+# Предзапуск. Пока курс не открыт, бот показывает вместо цены дату — но
+# следом он шлёт этот PDF, и до сегодняшнего дня в нём цена стояла как ни
+# в чём не бывало. Человек читал «курс откроется 10 октября» и тут же
+# открывал файл с ценником: два разных сообщения в одну минуту.
+#
+# Поэтому собираются два файла: offer.pdf с ценой и offer-pre.pdf с датой.
+# Переключается глобальной переменной, а не аргументом: блок цены лежит на
+# пятом этаже вызовов, и тащить флаг через все пять ради одного абзаца
+# дороже, чем переключить его здесь.
+PRE_LAUNCH = None      # None — обычный оффер; строка «10 октября» — предзапуск
+
+# День открытия в предзапускном файле. Должен совпадать с LAUNCH_AT в
+# bot/wrangler.toml — там та же дата, только в UTC. Разъедутся — человек
+# прочитает в сообщении одно число, а в файле другое.
+LAUNCH_DAY = "10 октября"
+
 TG_LINK = (
     "https://t.me/Mr_Serbolin?text="
     "%D0%A5%D0%BE%D1%87%D1%83%20%D0%BA%D1%83%D1%80%D1%81%20%C2%AB"
@@ -514,6 +530,33 @@ def slide_value(interactive: bool) -> str:
   </section>"""
 
 
+def price_html() -> str:
+    """Блок цены — или даты открытия, если продажа ещё закрыта."""
+    if PRE_LAUNCH:
+        return f"""<div class="price">
+            <span class="rub">{PRE_LAUNCH}</span>
+            <span class="once">день, когда курс откроется</span>
+          </div>
+          <p class="sub">Сейчас его проходят первые ученики, и я иду вместе
+          с ними — смотрю, что работает, а что надо переписать до того, как
+          продавать. Ты уже в списке: напишу первым, как откроется, искать
+          ничего не надо.</p>
+          <a class="btn" href="{TG_LINK}">Написать Эдуарду</a>
+          <p class="terms">Отвечаю сам — не бот и не менеджер. Если хочешь
+          занять место заранее или просто спросить — пиши.</p>"""
+
+    return f"""<div class="price">
+            <span class="rub">{PRICE}</span>
+            <span class="once">один раз, навсегда твоё · без подписки и доплат</span>
+          </div>
+          <p class="sub">Оплатить — минута, а дальше нужно открывать урок
+          каждый день. Обычно на этом всё и сыпется, поэтому напоминать буду
+          я: бот пишет сам и вечером спрашивает, как прошло.</p>
+          <a class="btn" href="{TG_LINK}">Написать Эдуарду</a>
+          <p class="terms">Отвечаю сам — не бот и не менеджер. Скажу
+          реквизиты, отвечу на вопросы и включу курс.</p>"""
+
+
 def slide_decide(interactive: bool) -> str:
     return f"""
   <section class="slide" id="s3" aria-label="Слайд 3 из 3">
@@ -543,16 +586,7 @@ def slide_decide(interactive: bool) -> str:
       <div class="offer">
         <div class="decor" aria-hidden="true"></div>
         <div class="inner">
-          <div class="price">
-            <span class="rub">{PRICE}</span>
-            <span class="once">один раз, навсегда твоё · без подписки и доплат</span>
-          </div>
-          <p class="sub">Оплатить — минута, а дальше нужно открывать урок
-          каждый день. Обычно на этом всё и сыпется, поэтому напоминать буду
-          я: бот пишет сам и вечером спрашивает, как прошло.</p>
-          <a class="btn" href="{TG_LINK}">Написать Эдуарду</a>
-          <p class="terms">Отвечаю сам — не бот и не менеджер. Скажу
-          реквизиты, отвечу на вопросы и включу курс.</p>
+          {price_html()}
         </div>
       </div>
 
@@ -907,7 +941,7 @@ def print_page(heights: list[float] | None = None) -> str:
                                        heights=heights)))
 
 
-def render_pdf() -> tuple[pathlib.Path, list[str]]:
+def render_pdf(name: str = "offer.pdf") -> tuple[pathlib.Path, list[str]]:
     """Печатает три слайда тремя страницами, каждую — под свой слайд.
 
     Проход первый: слайды стоят с высотой по содержимому, меряем их.
@@ -918,7 +952,7 @@ def render_pdf() -> tuple[pathlib.Path, list[str]]:
     from playwright.sync_api import sync_playwright
 
     BUILD.mkdir(exist_ok=True)
-    dst = OUT / "offer.pdf"
+    dst = OUT / name
     src = BUILD / "offer-print.html"
 
     os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "/opt/pw-browsers")
@@ -986,12 +1020,22 @@ def main() -> None:
 
     pdf, notes = render_pdf()
 
-    for f in ("offer.html", "offer-artifact.html", "offer-template.html", "offer.pdf"):
+    # Второй файл — тот, что бот шлёт, пока продажа закрыта. Всё то же
+    # самое, кроме блока цены: там стоит дата открытия.
+    global PRE_LAUNCH
+    PRE_LAUNCH = LAUNCH_DAY
+    pre, pre_notes = render_pdf("offer-pre.pdf")
+    PRE_LAUNCH = None
+
+    for f in ("offer.html", "offer-artifact.html", "offer-template.html",
+              "offer.pdf", "offer-pre.pdf"):
         kb = (OUT / f).stat().st_size / 1024
         print(f"  {f} ({kb:.0f} КБ)")
 
     print("\n".join(notes))
     check_pdf(pdf)
+    print(f"предзапускный оффер: вместо цены «{LAUNCH_DAY}»")
+    check_pdf(pre)
 
     # CSP артефакта режет загрузку с внешних хостов: картинки, шрифты, стили,
     # скрипты. Ссылка-переход под это не попадает — по ней читатель уходит

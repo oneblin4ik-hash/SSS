@@ -93,11 +93,15 @@ def main() -> int:
     # Оффер тремя слайдами. Спека просит его рядом с Mini App, а не вместо:
     # он остаётся в переписке, его пересылают и показывают мужу. Файл один
     # на всех, персонализации в нём нет.
-    offer = HERE.parent / "offer-page" / "out" / "offer.pdf"
-    if offer.exists():
-        shutil.copyfile(offer, pdf_dst / "offer.pdf")
-        print(f"Оффер: offer.pdf ({offer.stat().st_size // 1024} КБ)")
-    else:
+    # Два файла: с ценой и предзапускный, с датой вместо неё. Бот выбирает
+    # по LAUNCH_AT — пока дата открытия в будущем, уходит второй.
+    for name in ("offer.pdf", "offer-pre.pdf"):
+        offer = HERE.parent / "offer-page" / "out" / name
+        if not offer.exists():
+            break
+        shutil.copyfile(offer, pdf_dst / name)
+        print(f"Оффер: {name} ({offer.stat().st_size // 1024} КБ)")
+    if not offer.exists():
         print("  Оффера нет — собери его: cd offer-page && python3 build_offer.py")
     print("Внешнего только шрифты Google и скрипт Telegram — так и задумано.")
     print()

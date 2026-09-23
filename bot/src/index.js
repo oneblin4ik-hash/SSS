@@ -8,8 +8,8 @@
  * Что дальше по спеке: «День 0» на четыре вопроса, карточка стартовой точки,
  * оффер, заявка в личку, выдача курса и четырнадцать джобов на 8:00.
  */
-import { welcome, SUB_OK, SUB_MISSING, BTN_SUBSCRIBE, BTN_SUB_CHECK,
-         BTN_QUIZ } from "./texts.js";
+import { welcome, SUB_GATE, SUB_MISSING, SUB_OK_NO_QUIZ, BTN_SUBSCRIBE,
+         BTN_SUB_CHECK, BTN_QUIZ } from "./texts.js";
 import { sendMessage, answerCallback, isSubscribed } from "./telegram.js";
 import { upsertUser, logEvent, saveQuiz, getUser, getQuiz } from "./db.js";
 import * as day0 from "./day0.js";
@@ -21,6 +21,7 @@ import { onTimezone, onCheckin } from "./course.js";
 import { ensureSchema } from "./migrate.js";
 import { preLaunch, scheduleLaunch } from "./launch.js";
 import { onProbeg } from "./probeg.js";
+import { ensureProfile } from "./botprofile.js";
 
 /* Клавиатура с кнопкой Mini App. Именно reply-keyboard, а не меню и не
    inline: только из неё работает sendData, и результат теста приходит
@@ -63,15 +64,19 @@ async function onStart(env, msg) {
   });
   await logEvent(env.DB, uid, "start", source ? { source } : null);
 
-  const ok = await isSubscribed(env.BOT_TOKEN, env.CHANNEL, uid);
-  await logEvent(env.DB, uid, ok ? "sub_ok" : "sub_required");
+  // Тест открыт всем. Подписку спрашиваем после него, перед «Днём 0»:
+  // там у человека уже есть ради чего подписываться. См. texts.js, SUB_GATE.
+  await sendMessage(env.BOT_TOKEN, msg.chat.id, welcome(), quizKeyboard(env.QUIZ_URL));
+}
 
-  await sendMessage(
-    env.BOT_TOKEN,
-    msg.chat.id,
-    welcome(ok),
-    ok ? quizKeyboard(env.QUIZ_URL) : gateKeyboard(env.CHANNEL_URL),
-  );
+/* Экран подписки после теста. Приветствие не повторяем — человек его
+   уже видел; только зачем подписываться и две кнопки. */
+async function showGate(env, chatId, uid) {
+  await logEvent(env.DB, uid, "sub_required");
+  await sendMessage(env.BOT_TOKEN, chatId, SUB_GATE, {
+    parse_mode: "Markdown",
+    ...gateKeyboard(env.CHANNEL_URL),
+  });
 }
 
 async function onSubCheck(env, cq) {
@@ -79,7 +84,7 @@ async function onSubCheck(env, cq) {
   const ok = await isSubscribed(env.BOT_TOKEN, env.CHANNEL, uid);
 
   if (!ok) {
-    // Отказ показываем всплывающим окном, а не сообщением: кнопка остаётся
+    // Отказ показываем всплывашкой, а не сообщением: кнопка остаётся
     // на месте, чат не засоряется, повторное нажатие ничего не стоит.
     // Считать нажатия и попрекать ими не нужно — человек может искренне
     // не понимать, куда жать.
@@ -88,9 +93,24 @@ async function onSubCheck(env, cq) {
   }
 
   await logEvent(env.DB, uid, "sub_ok");
-  await answerCallback(env.BOT_TOKEN, cq.id, "");
-  await sendMessage(env.BOT_TOKEN, cq.message.chat.id, SUB_OK,
-                    quizKeyboard(env.QUIZ_URL));
+  const chatId = cq.message.chat.id;
+  const payload = await getQuiz(env.DB, uid);
+
+  if (!payload) {
+    // Кнопка из старой переписки, до переезда гейта: теста ещё нет.
+    await answerCallback(env.BOT_TOKEN, cq.id, "");
+    await sendMessage(env.BOT_TOKEN, chatId, SUB_OK_NO_QUIZ, quizKeyboard(env.QUIZ_URL));
+    return;
+  }
+
+  // «День 0» запускаем только если он не идёт и не пройден. Второе нажатие
+  // на «Я подписался» не должно сбрасывать человека на первый вопрос.
+  const user = await getUser(env.DB, uid);
+  const d0 = await env.DB.prepare(`SELECT done_at FROM day0 WHERE user_id = ?1`)
+    .bind(uid).first();
+  await answerCallback(env.BOT_TOKEN, cq.id, "Вижу, спасибо! Поехали.");
+  if (day0.stepOf(user?.state) || d0?.done_at) return;
+  await day0.begin(env, chatId, uid, payload);
 }
 
 async function onQuizDone(env, msg) {
@@ -121,8 +141,15 @@ async function onQuizDone(env, msg) {
   if (preLaunch(env)) await scheduleLaunch(env.DB, uid, env.LAUNCH_AT);
   else await scheduleWarmup(env.DB, uid);
 
-  // Дальше сразу «День 0»: пауза между тестом и первым заданием — это
-  // место, где человек закрывает чат и не возвращается.
+  // Дальше «День 0» — но сначала подписка на канал. Кто уже подписан,
+  // проходит без остановки: для него гейта как будто нет.
+  if (!(await isSubscribed(env.BOT_TOKEN, env.CHANNEL, uid))) {
+    return showGate(env, msg.chat.id, uid);
+  }
+  await logEvent(env.DB, uid, "sub_ok");
+
+  // Пауза между тестом и первым заданием — это место, где человек
+  // закрывает чат и не возвращается. Поэтому сразу.
   await day0.begin(env, msg.chat.id, uid, payload);
 }
 
@@ -138,6 +165,15 @@ async function onUnsub(env, cq) {
 async function handleUpdate(env, update) {
   await ensureSchema(env.DB);
   await route(env, update);
+
+  // Витрина бота — описание и меню. Один раз после выкладки, потом
+  // мгновенный выход. Упала — не страшно, попробует на следующем
+  // обращении; разговор с человеком это не задерживает.
+  try {
+    await ensureProfile(env);
+  } catch (e) {
+    console.error("витрина бота не выставилась:", e?.message || e);
+  }
 
   // Любое обращение к боту заодно подталкивает очередь. Крон — отдельная
   // настройка, и сегодня выяснилось, что её может не быть: уроки пролежали
@@ -214,7 +250,7 @@ async function route(env, update) {
  *
  * Теперь GET на адрес воркера отвечает этой строкой. Меняй её в том же
  * коммите, что и сами правки, — и проверка сводится к одному curl. */
-const VERSION = "2026-09-23 · оффер с фото учеников";
+const VERSION = "2026-09-23 · подписка после теста, новая витрина";
 
 export default {
   async fetch(request, env, ctx) {

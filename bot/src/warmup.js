@@ -110,6 +110,13 @@ export const UNSUB_DONE = "Понял, больше не пишу. Если пе
  */
 export async function scheduleWarmup(db, userId, fromISO) {
   const base = Date.parse(fromISO || new Date().toISOString());
+  // Кнопка «Пройти тест» висит постоянно, и тест проходят повторно. Без
+  // этой строки каждый заход добавлял ещё шесть касаний к прежним: два
+  // прохода — двенадцать сообщений «ну что, надумал?». Неотправленные
+  // касания прошлого захода снимаем, отсчёт идёт от последнего теста.
+  await db.prepare(
+    `DELETE FROM jobs WHERE user_id = ?1 AND sent_at IS NULL AND kind LIKE 'warm_%'`)
+    .bind(userId).run();
   await db.batch(SCHEDULE.map((s) =>
     db.prepare(`INSERT INTO jobs (user_id, kind, due_at) VALUES (?1, ?2, ?3)`)
       .bind(userId, s.kind, new Date(base + s.after).toISOString())));

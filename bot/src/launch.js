@@ -55,6 +55,11 @@ export const PRE_FOOTNOTE =
 
 /** Один джоб на дату открытия вместо всей цепочки догрева. */
 export async function scheduleLaunch(db, userId, whenISO) {
+  // Один джоб на человека, сколько бы раз он ни проходил тест. Иначе
+  // в день открытия он получил бы оффер столько раз, сколько тестов прошёл.
+  await db.prepare(
+    `DELETE FROM jobs WHERE user_id = ?1 AND sent_at IS NULL AND kind = 'launch'`)
+    .bind(userId).run();
   await db.prepare(
     `INSERT INTO jobs (user_id, kind, due_at) VALUES (?1, 'launch', ?2)`)
     .bind(userId, whenISO).run();

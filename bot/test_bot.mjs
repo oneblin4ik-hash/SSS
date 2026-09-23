@@ -124,10 +124,26 @@ head("Миграция поднимает базу с нуля:");
 // проверяется запись диплинка.
 await send({ message: { from: { id: 1000, first_name: "Схема" },
                         chat: { id: 1000 }, text: "/start" } });
+const firstCalls = calls.map((c) => c.method);
 const drift = schemaDrift();
 check(drift.length === 0,
       drift.length ? `в migrate.js нет таблиц: ${drift.join(", ")}`
                    : "все таблицы из schema.sql на месте");
+
+head("Витрина бота выставляется сама:");
+check(firstCalls.filter((m) => m === "setMyDescription").length === 2,
+      "описание — и общее, и для русского языка");
+check(firstCalls.includes("deleteMyCommands"),
+      "старое меню конструктора (/command1) снято");
+check(firstCalls.filter((m) => m === "setMyCommands").length === 3,
+      "меню для всех, для русского и отдельное — владельцу");
+check(!!row("SELECT 1 a FROM events WHERE event='bot_profile'"), "отметка, что выставлено");
+await send({ message: { from: { id: 1002 }, chat: { id: 1002 }, text: "/start" } });
+check(!calls.some((c) => c.method === "setMyDescription"),
+      "второй раз не выставляется — один раз на версию");
+const { DESCRIPTION, SHORT_DESCRIPTION } = await import("./src/botprofile.js");
+check(DESCRIPTION.length <= 512 && SHORT_DESCRIPTION.length <= 120,
+      `тексты в пределах Telegram (${DESCRIPTION.length}/512, ${SHORT_DESCRIPTION.length}/120)`);
 
 /* ── 1. чужой запрос ──────────────────────────────────────────────────── */
 head("Чужой запрос без секрета:");
@@ -135,24 +151,44 @@ const bad = await send(text("/start"), "wrong");
 check(bad.status === 403, "отбит с кодом 403");
 check(calls.length === 0, "в Bot API ничего не ушло");
 
-/* ── 2. вход без подписки ─────────────────────────────────────────────── */
+/* ── 2. вход ─────────────────────────────────────────────────────────── */
 head("/start, человек не подписан:");
 subscribed = false;
 await send(text("/start q_ig"));
 check(row("SELECT source FROM users WHERE user_id=777")?.source === "q_ig",
       "источник q_ig записан");
-check(!!row("SELECT 1 a FROM events WHERE event='sub_required'"), "событие sub_required");
-const gate = sent()[0].body;
-check(!!gate.reply_markup.inline_keyboard, "показаны кнопки подписки");
-check(!gate.reply_markup.keyboard, "кнопки теста нет");
-check(gate.text.includes("Тест живёт в моём канале"), "концовка про канал");
+const hello = sent()[0].body;
+check(hello.reply_markup.keyboard?.[0]?.[0]?.web_app?.url === env.QUIZ_URL,
+      "тест открыт сразу, без подписки");
+check(!hello.reply_markup.inline_keyboard, "кнопок подписки на входе нет");
+check(hello.text.includes("тип старта"), "концовка — про то, что даёт тест");
+check(!hello.text.includes("сходишь с дистанции"),
+      "старое обещание про срывы ушло: этих вопросов в тесте давно нет");
 
 head("Повторный /start с другой меткой:");
 await send(text("/start q_yt"));
 check(row("SELECT source FROM users WHERE user_id=777")?.source === "q_ig",
       "источник не перетёрся, остался настоящий");
 
-/* ── 3. гейт ──────────────────────────────────────────────────────────── */
+/* ── 3. гейт после теста ──────────────────────────────────────────────── */
+const payload = {
+  v: 2, n: "Галина", g: "f", a: 36, h: 165, w: 78, wg: 66,
+  gl: "loss", zn: "belly", fn: 4, fg: 2, ex: "quit", ls: "m1",
+  pl: "home", mn: "30", fq: "2", hl: ["knee"], t: "onoff",
+  wk: 27, tr: 2, bmi: 28.7, cm: "weight",
+};
+head("Тест пройден, подписки нет:");
+await send({ message: { from, chat, web_app_data: { data: JSON.stringify(payload) } } });
+check(!!row("SELECT 1 a FROM quiz WHERE user_id=777"), "результат сохранён сразу");
+check(!!row("SELECT 1 a FROM events WHERE event='sub_required'"), "событие sub_required");
+const gate = sent().at(-1).body;
+check(!!gate.reply_markup.inline_keyboard, "показаны кнопки подписки");
+check(gate.text.includes("День 0") && gate.text.includes("подписчикам канала"),
+      "объяснено, ради чего подписываться");
+check(!sent().some((c) => c.body.text.startsWith("*День 0.")), "День 0 не начат");
+check(row("SELECT state FROM users WHERE user_id=777")?.state == null,
+      "человек не застрял в диалоге");
+
 head("«Я подписался» без подписки:");
 const cb = (data) => ({ callback_query: { id: "1", from, message: { chat }, data } });
 await send(cb("sub_check"));
@@ -165,19 +201,27 @@ head("«Я подписался», подписка есть:");
 subscribed = true;
 await send(cb("sub_check"));
 check(!!row("SELECT 1 a FROM events WHERE event='sub_ok'"), "событие sub_ok");
-check(lastText() === "Вижу. Погнали: 14 вопросов, две с половиной минуты.",
-      "текст ровно из спеки");
-check(sent()[0].body.reply_markup.keyboard[0][0].web_app.url === env.QUIZ_URL,
-      "кнопка ведёт на выложенный квиз");
+check(sent()[0].body.text.startsWith("*День 0."), "сразу пошёл День 0");
+check(row("SELECT state FROM users WHERE user_id=777")?.state === "day0_1",
+      "состояние — первый вопрос");
+
+head("Второе нажатие не сбрасывает диалог:");
+await send(text("встала в 7:30, легла в 23:00"));
+await send(cb("sub_check"));
+check(row("SELECT state FROM users WHERE user_id=777")?.state === "day0_2",
+      "остались на втором вопросе, а не вернулись к первому");
+check(!sent().some((c) => c.body.text.startsWith("*День 0.")),
+      "вступление второй раз не пришло");
+
+head("Подписан заранее — гейта нет вовсе:");
+await send({ message: { from: { id: 1001, first_name: "Олег" }, chat: { id: 1001 },
+                        web_app_data: { data: JSON.stringify({ ...payload, g: "m" }) } } });
+check(sent()[0].body.text.startsWith("*День 0."), "сразу День 0");
+check(!sent().some((c) => c.body.reply_markup?.inline_keyboard?.[1]?.[0]?.callback_data === "sub_check"),
+      "экрана подписки не было");
 
 /* ── 4. результат теста → «День 0» ────────────────────────────────────── */
-head("Результат теста пришёл:");
-const payload = {
-  v: 2, n: "Галина", g: "f", a: 36, h: 165, w: 78, wg: 66,
-  gl: "loss", zn: "belly", fn: 4, fg: 2, ex: "quit", ls: "m1",
-  pl: "home", mn: "30", fq: "2", hl: ["knee"], t: "onoff",
-  wk: 27, tr: 2, bmi: 28.7, cm: "weight",
-};
+head("Результат теста пришёл (перепрошёл, уже подписан):");
 await send({ message: { from, chat, web_app_data: { data: JSON.stringify(payload) } } });
 const q = row("SELECT * FROM quiz WHERE user_id=777");
 check(!!q && JSON.parse(q.payload).n === "Галина", "payload лёг в quiz целиком");
@@ -572,6 +616,11 @@ check(calls.some((c) => c.method === "sendDocument" &&
 check(!calls.some((c) => c.method === "sendDocument" &&
                          /\/offer\.pdf/.test(String(c.body.document))),
       "обычный оффер с ценой в это время не уходит");
+await sendPre({ message: { from: from6, chat: chat6,
+  web_app_data: { data: JSON.stringify(p6) } } });
+check(sqlite.prepare("SELECT COUNT(*) c FROM jobs WHERE user_id=222 AND kind='launch' " +
+                     "AND sent_at IS NULL").get().c === 1,
+      "прошла тест второй раз — оффер в день открытия всё равно один");
 check(pitch.body.text.includes("Ты уже в списке"), "человек знает, что его не забудут");
 check(pitch.body.text.includes("библиотека из 9 блюд"),
       "ценность видна целиком — скрыта одна строка");

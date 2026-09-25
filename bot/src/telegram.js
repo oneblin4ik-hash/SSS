@@ -52,6 +52,21 @@ export const sendMessage = (token, chat_id, text, extra = {}) => {
 export const plain = (s) =>
   String(s ?? "").replace(/[*_`\[\]]/g, "").trim();
 
+/** Вызов с загрузкой файла, multipart. Нужен там, где Telegram не берёт
+ *  ссылку: фото профиля бота и файлы, которых нет на сайте, — таблица
+ *  учеников собирается на лету и живёт только в этом запросе. */
+export async function upload(token, method, fields, field, blob, filename) {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(fields)) {
+    form.append(k, typeof v === "string" ? v : JSON.stringify(v));
+  }
+  form.append(field, blob, filename);
+  const res = await fetch(`${API}${token}/${method}`, { method: "POST", body: form });
+  const data = await res.json();
+  if (!data.ok) throw new Error(`${method}: ${data.description || res.status}`);
+  return data.result;
+}
+
 export const answerCallback = (token, id, text, alert = false) =>
   call(token, "answerCallbackQuery", {
     callback_query_id: id,

@@ -22,6 +22,7 @@ import { ensureSchema } from "./migrate.js";
 import { preLaunch, scheduleLaunch } from "./launch.js";
 import { onProbeg } from "./probeg.js";
 import { ensureProfile } from "./botprofile.js";
+import { onLeads } from "./leads.js";
 
 /* Клавиатура с кнопкой Mini App. Именно reply-keyboard, а не меню и не
    inline: только из неё работает sendData, и результат теста приходит
@@ -195,6 +196,8 @@ async function route(env, update) {
   // Прогон всего пути в личку владельцу. Внутри проверка на ADMIN_ID:
   // чужому эта команда не ответит ничем.
   if (msg?.text?.startsWith("/probeg")) return onProbeg(env, msg);
+  // Все, кто прошёл тест, таблицей. Внутри проверка на ADMIN_ID.
+  if (msg?.text?.startsWith("/leads")) return onLeads(env, msg);
   // Протолкнуть очередь руками. Нужна, пока крон не подключён: без него
   // уроки, чек-ины и догрев просто лежат в базе и ждут.
   if (msg?.text?.startsWith("/tick") &&
@@ -250,7 +253,7 @@ async function route(env, update) {
  *
  * Теперь GET на адрес воркера отвечает этой строкой. Меняй её в том же
  * коммите, что и сами правки, — и проверка сводится к одному curl. */
-const VERSION = "2026-09-25 · имя, описание и аватарка: Серболин · Первые шаги";
+const VERSION = "2026-09-25 · /leads — таблица всех, кто прошёл тест";
 
 export default {
   async fetch(request, env, ctx) {

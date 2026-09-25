@@ -843,6 +843,37 @@ check(waiting() === 5, "остальные ждут следующего кро�
 await runDue(env);
 check(waiting() === 0, "следующий крон их забрал");
 
+/* ── 13e. таблица учеников ───────────────────────────────────────────── */
+head("/leads — все, кто прошёл тест, таблицей:");
+// Человек с именем-формулой: Excel не должен её выполнить.
+sqlite.prepare("INSERT INTO users (user_id, username, name, created_at) " +
+               "VALUES (5555, NULL, 'x', '2026-09-20T10:00:00Z')").run();
+sqlite.prepare("INSERT INTO quiz (user_id, payload, quiz_at) VALUES (5555, ?, '2026-09-20T10:00:00Z')")
+  .run(JSON.stringify({ ...payload, n: "=HYPERLINK(\"http://x\")", t: "never", hl: ["knee", "back"] }));
+
+calls = [];
+await send({ message: { from, chat, text: "/leads" } });
+check(!calls.some((c) => c.method === "sendDocument"), "постороннему таблица не уходит");
+
+calls = [];
+await send({ message: { from: adminFrom, chat: { id: 1 }, text: "/leads" } });
+const doc = calls.find((c) => c.method === "sendDocument");
+check(!!doc, "владельцу пришёл файл");
+const csv = await doc.body.document.text();
+const lines = csv.split("\r\n").filter(Boolean);
+// По байтам: text() в Node съедает BOM при декодировании, а важно то, что в файле.
+const head3 = new Uint8Array(await doc.body.document.arrayBuffer()).slice(0, 3);
+check(head3[0] === 0xEF && head3[1] === 0xBB && head3[2] === 0xBF,
+      "BOM в начале — русский Excel откроет без кракозябр");
+check(lines[0].includes('"Тип старта"') && lines[0].split(";").length === 28,
+      "шапка на 28 колонок через точку с запятой");
+check(csv.includes('"https://t.me/edik"'), "ссылка на профиль Telegram");
+check(csv.includes('"Рывками"') && csv.includes('"Чистый лист"'), "тип старта словами, а не кодом");
+check(csv.includes('"Колени, суставы, Спина"'), "здоровье — списком, по-русски");
+check(csv.includes(`"'=HYPERLINK(""http://x"")"`), "формула из ответа погашена апострофом");
+check(/^Прошли тест: \d+\nПодписались на канал: \d+\nСделали День 0: \d+/.test(doc.body.caption),
+      "в подписи — воронка цифрами");
+
 /* ── 14. прогон всего пути ────────────────────────────────────────────── */
 head("Прогон курса в личку владельцу:");
 const probegFrom = { id: 1, username: "serbolin", first_name: "Эдуард" };

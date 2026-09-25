@@ -13,9 +13,15 @@
  * Картинку над описанием API менять не умеет, это только BotFather
  * (/setdescriptionpic). Там стоит мультяшный Эдуард — его не трогаем.
  * Аватарку бот ставит сам: setMyProfilePhoto появился в Bot API 10. */
-import { call } from "./telegram.js";
+import { call, upload } from "./telegram.js";
 
-const PROFILE_VERSION = "2026-09-25";
+const PROFILE_VERSION = "2026-09-25.2";
+
+/* Своя версия у аватарки. Фото профиля нельзя переиспользовать: каждая
+   загрузка добавляет новый снимок в историю профиля бота. Если бы аватарка
+   шла с общей версией, любая правка меню или описания заливала бы ту же
+   картинку ещё раз, и в профиле копились бы одинаковые фото. */
+const AVATAR_VERSION = "2026-09-25";
 
 /* Имя в списке чатов. Телефон показывает около 22 знаков — остальное
    обрезает, как было со старым «Mr. Serbolin - ПОЛЕЗ…». Выбор владельца,
@@ -51,6 +57,7 @@ export const COMMANDS = [
    путали бы людей, а самому Эдуарду их иначе негде вспомнить. */
 const ADMIN_COMMANDS = [
   ...COMMANDS,
+  { command: "leads", description: "Все, кто прошёл тест, — таблицей" },
   { command: "waiting", description: "Кто ждёт ответа по заявке" },
   { command: "tick", description: "Протолкнуть очередь рассылок" },
   { command: "probeg", description: "Прогнать весь курс себе" },
@@ -89,12 +96,20 @@ export async function ensureProfile(env) {
   // Аватарка отдельно и без права уронить остальное: тексты уже стоят,
   // и если картинка не встала, пусть это не откатывает их в «не сделано».
   // Не встала — запишем причину в ленту и попробуем на следующей версии.
-  try {
-    await setAvatar(env);
-  } catch (e) {
-    await env.DB.prepare(
-      `INSERT INTO events (user_id, event, meta, at) VALUES (0, 'bot_avatar_failed', ?1, ?2)`)
-      .bind(String(e?.message || e).slice(0, 300), new Date().toISOString()).run();
+  const hasAvatar = await env.DB.prepare(
+    `SELECT 1 a FROM events WHERE user_id = 0 AND event = 'bot_avatar' AND meta = ?1`)
+    .bind(AVATAR_VERSION).first();
+  if (!hasAvatar) {
+    try {
+      await setAvatar(env);
+      await env.DB.prepare(
+        `INSERT INTO events (user_id, event, meta, at) VALUES (0, 'bot_avatar', ?1, ?2)`)
+        .bind(AVATAR_VERSION, new Date().toISOString()).run();
+    } catch (e) {
+      await env.DB.prepare(
+        `INSERT INTO events (user_id, event, meta, at) VALUES (0, 'bot_avatar_failed', ?1, ?2)`)
+        .bind(String(e?.message || e).slice(0, 300), new Date().toISOString()).run();
+    }
   }
 
   await env.DB.prepare(
@@ -109,11 +124,8 @@ export async function ensureProfile(env) {
 async function setAvatar(env) {
   const img = await fetch(AVATAR_URL);
   if (!img.ok) throw new Error(`аватарка не скачалась: HTTP ${img.status}`);
-  const form = new FormData();
-  form.append("photo", JSON.stringify({ type: "static", photo: "attach://avatar" }));
-  form.append("avatar", new Blob([await img.arrayBuffer()], { type: "image/jpeg" }), "avatar.jpg");
-  const res = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/setMyProfilePhoto`,
-                          { method: "POST", body: form });
-  const data = await res.json();
-  if (!data.ok) throw new Error(`setMyProfilePhoto: ${data.description || res.status}`);
+  await upload(env.BOT_TOKEN, "setMyProfilePhoto",
+               { photo: { type: "static", photo: "attach://avatar" } },
+               "avatar", new Blob([await img.arrayBuffer()], { type: "image/jpeg" }),
+               "avatar.jpg");
 }

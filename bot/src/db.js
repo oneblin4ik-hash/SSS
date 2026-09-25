@@ -1,0 +1,74 @@
+/* Доступ к D1. Ничего умного: три функции, которые нужны первому заходу. */
+import { plain } from "./telegram.js";
+
+const now = () => new Date().toISOString();
+
+/**
+ * Заводит человека при первом /start и не трогает уже заведённого.
+ * Источник пишем только один раз — при повторном /start с другим диплинком
+ * перезаписывать нельзя, иначе потеряем, откуда человек пришёл на самом деле.
+ */
+export async function upsertUser(db, { userId, username, name, source }) {
+  await db
+    .prepare(
+      `INSERT INTO users (user_id, username, name, source, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5)
+       ON CONFLICT(user_id) DO UPDATE SET
+         username = COALESCE(excluded.username, users.username),
+         name     = COALESCE(users.name, excluded.name)`,
+    )
+    .bind(userId, username ?? null, name ?? null, source ?? null, now())
+    .run();
+}
+
+/** Событие воронки. Пишем всегда, даже когда кажется, что незачем:
+ *  восстановить пропущенное событие задним числом нельзя. */
+export async function logEvent(db, userId, event, meta = null) {
+  await db
+    .prepare(`INSERT INTO events (user_id, event, meta, at) VALUES (?1, ?2, ?3, ?4)`)
+    .bind(userId, event, meta ? JSON.stringify(meta) : null, now())
+    .run();
+}
+
+/** Результат теста. Перепрохождение затирает прошлый — человеку показываем
+ *  то, что он ответил в последний раз, а не первый. */
+export async function saveQuiz(db, userId, payload) {
+  // Имя человек пишет сам, а дальше оно встаёт внутрь наших звёздочек:
+  // «*{имя}, твоя стартовая точка*». Одна звёздочка или подчёркивание
+  // в имени — и карточка не отправится вообще. Чистим на входе, один раз.
+  if (payload.n) payload = { ...payload, n: plain(payload.n) };
+
+  await db.batch([
+    db
+      .prepare(
+        `INSERT INTO quiz (user_id, payload, type, exp, quiz_at)
+         VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(user_id) DO UPDATE SET
+           payload = excluded.payload,
+           type    = excluded.type,
+           exp     = excluded.exp,
+           quiz_at = excluded.quiz_at`,
+      )
+      .bind(userId, JSON.stringify(payload), payload.t ?? null, payload.ex ?? null, now()),
+    db
+      .prepare(`UPDATE users SET name = ?2, gender = ?3 WHERE user_id = ?1`)
+      .bind(userId, payload.n ?? null, payload.g ?? null),
+  ]);
+}
+
+/** Человек и его состояние диалога. */
+export const getUser = (db, userId) =>
+  db.prepare(`SELECT * FROM users WHERE user_id = ?1`).bind(userId).first();
+
+/** Результат теста, разобранный обратно в объект. Нужен почти везде:
+ *  на нём стоит и род в текстах, и ветка курса, и выбор файла программы. */
+export async function getQuiz(db, userId) {
+  const row = await db.prepare(`SELECT payload FROM quiz WHERE user_id = ?1`)
+    .bind(userId).first();
+  if (!row) return null;
+  try {
+    return JSON.parse(row.payload);
+  } catch {
+    return null;
+  }
+}

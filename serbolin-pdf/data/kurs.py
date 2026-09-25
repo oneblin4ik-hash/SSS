@@ -196,7 +196,7 @@ def intro() -> dict:
   </div>
 
   <div style="margin-top:36px;flex:1;min-height:0;display:flex">
-    {b.photo(f"{PHOTO}/eduard-kuhnya.webp", 0, pos="center 34%", style="flex:1;height:auto;border-radius:28px")}
+    {b.photo(f"{PHOTO}/eduard-kuhnya.webp", 0, pos="center 46%", style="flex:1;height:auto;border-radius:28px", fill=True)}
   </div>
 </div>
 {b.foot()}

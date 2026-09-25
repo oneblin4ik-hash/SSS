@@ -220,9 +220,15 @@ def btn(label: str, href: str = "", icon_name: str = "arrow") -> str:
 
 
 def photo(src: str, height: int, scrim: bool = True, style: str = "",
-          pos: str = "center") -> str:
+          pos: str = "center", fill: bool = False) -> str:
+    """fill=True — фото занимает оставшееся место и не влияет на размер блока.
+
+    Без этого рамка растягивается под собственную высоту картинки. Для
+    горизонтального кадра это незаметно, а вертикальный выталкивает всё
+    содержимое за край листа — так было с фото на кухне в «Перед стартом»."""
     sc = '<div class="scrim"></div>' if scrim else ""
-    return (f'<div class="photo" style="height:{height}px;{style}">'
+    cls = "photo fill" if fill else "photo"
+    return (f'<div class="{cls}" style="height:{height}px;{style}">'
             f'<img src="{src}" style="object-position:{pos}" alt="">{sc}</div>')
 
 

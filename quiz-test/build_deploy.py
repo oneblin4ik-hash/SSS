@@ -108,7 +108,10 @@ def main() -> int:
     pdf_src = HERE.parent / "serbolin-pdf" / "out"
     pdf_dst = DIST / "kurs"
     pdf_dst.mkdir(exist_ok=True)
-    pages = sorted(pdf_src.glob("kurs-*.pdf"))
+    # kurs-polnyy.pdf — весь курс одним файлом, его собирают для владельца,
+    # чтобы смотреть подряд. Боту он не нужен, а на сайте это был бы весь
+    # платный курс по одной ссылке, да ещё 15 МБ. Не выкладываем.
+    pages = sorted(f for f in pdf_src.glob("kurs-*.pdf") if f.stem != "kurs-polnyy")
     if not pages:
         print("  Страниц курса не нашлось — собери их: python3 build_kurs.py")
         return 1

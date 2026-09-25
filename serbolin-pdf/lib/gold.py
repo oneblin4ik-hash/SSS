@@ -265,6 +265,7 @@ b, strong {{ font-weight: 700; color: {TEXT}; }}
   border-radius: {RADIUS["tile"]}; box-shadow: inset 0 0 0 1px {GLASS_EDGE}; }}
 .photo.bleed {{ border-radius: 0; box-shadow: none; }}
 .photo img {{ width: 100%; height: 100%; object-fit: cover; display: block; }}
+.photo.fill img {{ position: absolute; inset: 0; }}
 .photo .scrim {{
   position: absolute; inset: auto 0 0 0; height: 46%;
   background: linear-gradient(to bottom, rgba(8,8,10,0), {VOID});

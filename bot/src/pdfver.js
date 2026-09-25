@@ -6,7 +6,7 @@
 export const PDF_VER = {
   "kurs-00-oblozhka": "55875bf6a9",
   "kurs-00-oglavlenie": "f33180a32a",
-  "kurs-00-pered-startom": "2a1eb76474",
+  "kurs-00-pered-startom": "51db18eb99",
   "kurs-01-audit-rezhima": "f51afa1392",
   "kurs-02-tarelka": "8f72950de1",
   "kurs-03-voda-nabor": "332436d8b9",
@@ -49,6 +49,6 @@ export const PDF_VER = {
   "kurs-uroven-2": "a477299932",
   "kurs-uroven-3": "731491432a",
   "kurs-uroven-4": "6a019a8ec9",
-  "offer-pre": "89a6b1b2a1",
-  "offer": "32540e8ff4"
+  "offer-pre": "acd19d8ef0",
+  "offer": "54f3b213a2"
 };

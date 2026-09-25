@@ -63,8 +63,14 @@ import { sendMessage } from "./src/telegram.js";
 
 const json = (o) => ({ json: async () => o, status: 200 });
 globalThis.fetch = async (url, init) => {
+  // Не Telegram — значит, бот забирает аватарку с Pages.
+  if (!String(url).startsWith("https://api.telegram.org")) {
+    return { ok: true, status: 200, arrayBuffer: async () => new ArrayBuffer(8) };
+  }
   const method = String(url).split("/").pop();
-  const body = JSON.parse(init.body);
+  // Аватарка уходит multipart-ом, всё остальное — JSON.
+  const body = init.body instanceof FormData ? Object.fromEntries(init.body)
+                                             : JSON.parse(init.body);
   calls.push({ method, body });
   if (method === "getChatMember") {
     return json(subscribed
@@ -131,8 +137,13 @@ check(drift.length === 0,
                    : "все таблицы из schema.sql на месте");
 
 head("Витрина бота выставляется сама:");
+check(firstCalls.filter((m) => m === "setMyName").length === 2,
+      "имя «Серболин · Первые шаги» — и общее, и для русского");
 check(firstCalls.filter((m) => m === "setMyDescription").length === 2,
       "описание — и общее, и для русского языка");
+check(firstCalls.includes("setMyProfilePhoto"), "аватарка выставлена");
+check(!row("SELECT 1 a FROM events WHERE event='bot_avatar_failed'"),
+      "без ошибок при загрузке аватарки");
 check(firstCalls.includes("deleteMyCommands"),
       "старое меню конструктора (/command1) снято");
 check(firstCalls.filter((m) => m === "setMyCommands").length === 3,
